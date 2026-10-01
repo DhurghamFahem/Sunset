@@ -87,13 +87,13 @@ class TattooCard extends StatelessWidget {
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
                     minimumSize: const Size(44, 44),
-                    backgroundColor: selected ? const Color(0xFFEAF0E7) : null,
+                    backgroundColor: selected
+                        ? forest
+                        : const Color(0xFFF0F3ED),
+                    foregroundColor: selected ? Colors.white : forest,
                   ),
                   onPressed: () => selection.toggle(product),
-                  icon: Icon(
-                    selected ? Icons.check : Icons.favorite_border,
-                    size: 18,
-                  ),
+                  icon: Icon(selected ? Icons.check : Icons.add, size: 18),
                   label: Text(
                     selected ? 'تم الاختيار' : 'اختيار',
                     style: const TextStyle(fontSize: 13),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
-import '../theme.dart';
 import '../widgets/common.dart';
 
 class CustomerShell extends StatelessWidget {
@@ -12,63 +11,44 @@ class CustomerShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selection = AppScope.of(context).selection;
-    final wide = MediaQuery.sizeOf(context).width >= 760;
-    final index = path.startsWith('/selection')
-        ? 2
-        : path.startsWith('/categor')
-        ? 1
-        : 0;
+    final reviewing = path.startsWith('/selection');
     return ListenableBuilder(
       listenable: selection,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          toolbarHeight: 68,
-          titleSpacing: 22,
-          title: Row(
-            children: [
-              InkWell(onTap: () => context.go('/'), child: const Brand()),
-              const SizedBox(width: 16),
-              if (wide)
-                const Text(
-                  'وشومات عشبية • لمسة تشبهك',
-                  style: TextStyle(fontSize: 13, color: muted),
+          toolbarHeight: 58,
+          titleSpacing: 16,
+          leading: path == '/'
+              ? null
+              : IconButton(
+                  tooltip: 'رجوع للتصفح',
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/'),
+                  icon: const Icon(Icons.arrow_back),
                 ),
-            ],
+          title: InkWell(
+            onTap: () => context.go('/'),
+            child: const Brand(size: 28),
           ),
-          actions: wide
-              ? [
-                  TextButton(
-                    onPressed: () => context.go('/'),
-                    child: const Text('الرئيسية'),
-                  ),
-                  TextButton(
-                    onPressed: () => context.go('/categories'),
-                    child: const Text('التصنيفات'),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go('/selections'),
-                      icon: const Icon(Icons.favorite_border, size: 19),
-                      label: Text('اختياراتي • ${selection.count}'),
-                    ),
-                  ),
-                ]
-              : [
-                  TextButton.icon(
-                    onPressed: () => context.go('/selections'),
-                    icon: const Icon(Icons.favorite_border, size: 21),
+          actions: [
+            if (!reviewing)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 12),
+                child: TextButton.icon(
+                  onPressed: () => context.push('/selections'),
+                  icon: Badge(
+                    isLabelVisible: selection.count > 0,
                     label: Text('${selection.count}'),
+                    child: const Icon(Icons.favorite_border, size: 21),
                   ),
-                  const SizedBox(width: 8),
-                ],
-          bottom: const PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: Color(0xFFE2E5DC)),
-          ),
+                  label: const Text('اختياراتي'),
+                ),
+              ),
+          ],
         ),
         body: SafeArea(
           top: false,
+          bottom: false,
           child: Column(
             children: [
               if (selection.persistenceWarning)
@@ -77,7 +57,7 @@ class CustomerShell extends StatelessWidget {
                   color: const Color(0xFFFFEDCB),
                   padding: const EdgeInsets.all(8),
                   child: const Text(
-                    'المتصفح ما قدر يحفظ اختياراتك. خلي الصفحة مفتوحة لحد ما تحفظ الصور.',
+                    'خلي الصفحة مفتوحة لحد ما تحفظ صور اختياراتك.',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -85,60 +65,35 @@ class CustomerShell extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (selection.count > 0 && index != 2)
-              SafeArea(
-                top: false,
-                bottom: wide,
-                child: Container(
-                  color: ivory,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => context.go('/selections'),
-                        icon: const Icon(Icons.favorite_outline),
-                        label: Text('اختياراتي • ${selection.count}'),
+        bottomNavigationBar: selection.count == 0 || reviewing
+            ? null
+            : Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Color(0xFFE2E5DC))),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                    child: Center(
+                      heightFactor: 1,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            key: const ValueKey('review-selections'),
+                            onPressed: () => context.push('/selections'),
+                            icon: const Icon(Icons.arrow_forward, size: 20),
+                            label: Text('شوف اختياراتي (${selection.count})'),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            if (!wide)
-              NavigationBar(
-                height: 70,
-                selectedIndex: index,
-                onDestinationSelected: (i) =>
-                    context.go(['/', '/categories', '/selections'][i]),
-                destinations: [
-                  const NavigationDestination(
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home),
-                    label: 'الرئيسية',
-                  ),
-                  const NavigationDestination(
-                    icon: Icon(Icons.grid_view_outlined),
-                    selectedIcon: Icon(Icons.grid_view_rounded),
-                    label: 'التصنيفات',
-                  ),
-                  NavigationDestination(
-                    icon: Badge(
-                      isLabelVisible: selection.count > 0,
-                      label: Text('${selection.count}'),
-                      child: const Icon(Icons.favorite_border),
-                    ),
-                    label: 'اختياراتي',
-                  ),
-                ],
-              ),
-          ],
-        ),
       ),
     );
   }

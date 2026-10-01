@@ -23,6 +23,41 @@ class CatalogController extends ChangeNotifier {
   int _offset = 0;
   bool _disposed = false;
   Timer? _debounce;
+  int get filterCount =>
+      (categoryId == null ? 0 : 1) +
+      bodyPlacements.length +
+      sizes.length +
+      tags.length +
+      (sort == CatalogSort.curated ? 0 : 1);
+  bool get hasFilters =>
+      filterCount > 0 || audience != null || search.trim().isNotEmpty;
+
+  void applyFilters({
+    required String? category,
+    required List<BodyPlacement> placements,
+    required List<TattooSize> selectedSizes,
+    required List<String> selectedTags,
+    required CatalogSort order,
+  }) {
+    categoryId = category;
+    bodyPlacements = List.of(placements);
+    sizes = List.of(selectedSizes);
+    tags = List.of(selectedTags);
+    sort = order;
+    reload();
+  }
+
+  void resetAll() {
+    categoryId = null;
+    audience = null;
+    bodyPlacements = [];
+    sizes = [];
+    tags = [];
+    search = '';
+    sort = CatalogSort.curated;
+    reload();
+  }
+
   Future<void> initialize() async {
     final tagOptions = repository
         .availableTags()

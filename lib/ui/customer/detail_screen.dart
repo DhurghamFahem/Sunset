@@ -71,72 +71,75 @@ class _DetailScreenState extends State<DetailScreen> {
             );
           }
           final selection = AppScope.of(context).selection;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+          return Column(
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () =>
-                      context.canPop() ? context.pop() : context.go('/'),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('رجوع للموديلات'),
-                ),
-              ),
-              TattooGallery(
-                key: ValueKey(p.id),
-                images: p.images,
-                label: p.displayName,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                p.displayName,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 26,
-                ),
-              ),
-              if (categoryName != null)
-                Text(categoryName!, style: const TextStyle(color: muted)),
-              const SizedBox(height: 8),
-              Text(
-                'مناسب لـ: ${p.audiences.map((value) => value.label).join(' و ')}',
-              ),
-              if (p.bodyPlacements.isNotEmpty)
-                Text(
-                  'أماكن الوشم: ${p.bodyPlacements.map((value) => value.label).join('، ')}',
-                ),
-              if (p.dimensions.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(p.dimensions),
-                ),
-              if (p.price != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    p.formattedPrice,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  children: [
+                    TattooGallery(
+                      key: ValueKey(p.id),
+                      images: p.images,
+                      label: p.displayName,
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Text(
+                      p.displayName,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                      ),
+                    ),
+                    if (categoryName != null)
+                      Text(categoryName!, style: const TextStyle(color: muted)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'مناسب لـ: ${p.audiences.map((value) => value.label).join(' و ')}',
+                    ),
+                    if (p.bodyPlacements.isNotEmpty)
+                      Text(
+                        'أماكن الوشم: ${p.bodyPlacements.map((value) => value.label).join('، ')}',
+                      ),
+                    if (p.dimensions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(p.dimensions),
+                      ),
+                    if (p.price != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          p.formattedPrice,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              const SizedBox(height: 22),
-              ListenableBuilder(
-                listenable: selection,
-                builder: (context, _) => FilledButton.icon(
-                  onPressed: () => selection.toggle(p),
-                  icon: Icon(
-                    selection.contains(p.id)
-                        ? Icons.check
-                        : Icons.favorite_border,
-                  ),
-                  label: Text(
-                    selection.contains(p.id)
-                        ? 'إزالة من اختياراتي'
-                        : 'أضف لاختياراتي',
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ListenableBuilder(
+                      listenable: selection,
+                      builder: (context, _) => FilledButton.icon(
+                        onPressed: () => selection.toggle(p),
+                        icon: Icon(
+                          selection.contains(p.id) ? Icons.check : Icons.add,
+                        ),
+                        label: Text(
+                          selection.contains(p.id)
+                              ? 'تم الاختيار ✓'
+                              : 'أضف لاختياراتي',
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
