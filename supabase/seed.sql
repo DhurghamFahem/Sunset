@@ -1,0 +1,2 @@
+-- Intentionally empty. Add real catalog entries through /admin.
+-- Automated fixtures live in tests and never seed a production catalog.

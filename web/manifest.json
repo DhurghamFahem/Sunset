@@ -1,0 +1,12 @@
+{
+  "name": "G2G | وشومات عشبية",
+  "short_name": "G2G",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#faf8f3",
+  "theme_color": "#2d493d",
+  "lang": "ar",
+  "dir": "rtl",
+  "description": "تصفح، اختار، ودز اختياراتك إلنا على Instagram",
+  "icons": [{"src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

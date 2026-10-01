@@ -1,0 +1,5 @@
+{
+  "USE_TEST_DATA": true,
+  "SUPABASE_URL": "https://YOUR_PROJECT.supabase.co",
+  "SUPABASE_ANON_KEY": "YOUR_PUBLIC_ANON_OR_PUBLISHABLE_KEY"
+}
