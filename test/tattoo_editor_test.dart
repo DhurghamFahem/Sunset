@@ -41,6 +41,10 @@ void main() {
   const product = Tattoo(
     id: 'existing',
     code: 'G2G-001',
+    name: 'وردة ناعمة',
+    width: 3,
+    height: 5,
+    tags: ['وردة', 'ناعم'],
     imageUrl: 'asset:assets/test_catalog/flower.png',
     additionalImages: [
       TattooImage(url: 'asset:assets/test_catalog/flower-alternate.png'),
@@ -110,6 +114,11 @@ void main() {
       await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
       expect(admin.savedId, 'existing');
       expect(admin.saved!['audiences'], ['men']);
+      expect(admin.saved!['name_ar'], 'وردة ناعمة');
+      expect(admin.saved!['code'], 'G2G-001');
+      expect(admin.saved!['width_cm'], 3);
+      expect(admin.saved!['height_cm'], 5);
+      expect(admin.saved!['tags'], ['وردة', 'ناعم']);
       expect(
         admin.saved!['body_placements'],
         containsAll(['arm', 'back', 'wrist']),
@@ -205,6 +214,45 @@ void main() {
     expect(admin.saved, isNull);
     expect(find.text('ارفع صورة الوشم أولاً.'), findsOneWidget);
     expect(admin.discarded, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('customer name and exact dimensions are required', (
+    tester,
+  ) async {
+    final admin = await openEditor(tester);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'اسم الوشم الظاهر للزبون'),
+      '',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'العرض (سم)'),
+      '',
+    );
+    await tapVisible(tester, find.text('حفظ'));
+    expect(admin.saved, isNull);
+    expect(find.text('أدخل اسم الوشم'), findsOneWidget);
+    expect(find.text('أدخل القياس بالسنتيمتر'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('editor normalizes duplicate tags before saving', (tester) async {
+    final admin = await openEditor(tester);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'وسوم البحث'),
+      'وردة، وَرْدَة, #FLOWER; flower',
+    );
+    await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
+    expect(admin.saved!['tags'], ['وردة', 'FLOWER']);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.widgetWithText(TextFormField, 'وسوم البحث'),
+          )
+          .controller!
+          .text,
+      isEmpty,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 }

@@ -32,12 +32,12 @@ class TattooCard extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: true,
-                  label: 'عرض ${product.code}',
+                  label: 'عرض ${product.displayName}',
                   child: InkWell(
                     onTap: () => context.push('/tattoo/${product.id}'),
                     child: CatalogImage(
                       product.thumbnail,
-                      label: product.name ?? product.code,
+                      label: product.displayName,
                       padding: 18,
                     ),
                   ),
@@ -49,11 +49,11 @@ class TattooCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        product.code,
-                        textDirection: TextDirection.ltr,
+                        product.displayName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                         style: const TextStyle(
-                          fontFamily: 'sans-serif',
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),

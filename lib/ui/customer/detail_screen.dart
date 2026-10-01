@@ -86,21 +86,17 @@ class _DetailScreenState extends State<DetailScreen> {
               TattooGallery(
                 key: ValueKey(p.id),
                 images: p.images,
-                label: p.name ?? p.code,
+                label: p.displayName,
               ),
               const SizedBox(height: 16),
               Text(
-                p.code,
-                textDirection: TextDirection.ltr,
+                p.displayName,
                 textAlign: TextAlign.right,
                 style: const TextStyle(
-                  fontFamily: 'sans-serif',
                   fontWeight: FontWeight.bold,
                   fontSize: 26,
                 ),
               ),
-              if (p.name?.isNotEmpty ?? false)
-                Text(p.name!, style: Theme.of(context).textTheme.titleLarge),
               if (categoryName != null)
                 Text(categoryName!, style: const TextStyle(color: muted)),
               const SizedBox(height: 8),

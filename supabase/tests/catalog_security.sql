@@ -9,10 +9,10 @@ insert into public.admin_users(user_id) values ('00000000-0000-4000-8000-0000000
 insert into public.categories(id, name_ar, active) values
   ('10000000-0000-4000-8000-000000000001','وشومات سوار',true),
   ('10000000-0000-4000-8000-000000000002','مخفي',false);
-insert into public.products(id,code,image_url,active) values
-  ('20000000-0000-4000-8000-000000000001','G2G-88001','https://example.invalid/1.png',true),
-  ('20000000-0000-4000-8000-000000000002','G2G-88002','https://example.invalid/2.png',false),
-  ('20000000-0000-4000-8000-000000000003','G2G-88003','https://example.invalid/3.png',true);
+insert into public.products(id,code,name_ar,image_url,active) values
+  ('20000000-0000-4000-8000-000000000001','G2G-88001','Test tattoo','https://example.invalid/1.png',true),
+  ('20000000-0000-4000-8000-000000000002','G2G-88002','Test tattoo','https://example.invalid/2.png',false),
+  ('20000000-0000-4000-8000-000000000003','G2G-88003','Test tattoo','https://example.invalid/3.png',true);
 insert into public.product_categories(product_id, category_id) values
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001'),
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002'),
@@ -67,14 +67,14 @@ select pg_temp.assert_true(exists(select 1 from storage.objects where bucket_id=
 do $$ begin
   begin delete from public.categories where id='10000000-0000-4000-8000-000000000001'; raise exception 'unsafe category deletion allowed';
   exception when foreign_key_violation then null; end;
-  begin insert into public.products(code,image_url) values ('G2G-88001','https://example.invalid/duplicate.png'); raise exception 'duplicate code allowed';
+  begin insert into public.products(code,name_ar,image_url) values ('G2G-88001','Test tattoo','https://example.invalid/duplicate.png'); raise exception 'duplicate code allowed';
   exception when unique_violation then null; end;
 end $$;
 
 do $$
 declare saved uuid; payload jsonb;
 begin
-  payload := '{"code":"G2G-88100","image_url":"https://example.invalid/multiple.png","category_ids":["10000000-0000-4000-8000-000000000001","10000000-0000-4000-8000-000000000002"],"audiences":["men","women"],"body_placements":["arm","back"]}';
+  payload := '{"code":"G2G-88100","name_ar":"Test tattoo","width_cm":3,"height_cm":5,"image_url":"https://example.invalid/multiple.png","category_ids":["10000000-0000-4000-8000-000000000001","10000000-0000-4000-8000-000000000002"],"audiences":["men","women"],"body_placements":["arm","back"]}';
   saved := public.save_catalog_product(payload);
   perform pg_temp.assert_true((select cardinality(category_ids) = 2 and audiences @> array['men','women'] and body_placements @> array['arm','back'] from public.catalog_products where id = saved), 'RPC creates all properties');
   perform pg_temp.assert_true((select count(*) from public.catalog_products where id = saved and audiences @> array['men'] and body_placements && array['back','foot'] and public_category_ids @> array['10000000-0000-4000-8000-000000000001']::uuid[]) = 1, 'combined filters match once');

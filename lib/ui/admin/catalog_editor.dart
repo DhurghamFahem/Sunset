@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/catalog.dart';
+import '../../models/catalog_search.dart';
 import '../../services/admin_service.dart';
 import '../widgets/common.dart';
 
@@ -28,7 +29,13 @@ class CatalogEditor extends StatefulWidget {
 
 class _CatalogEditorState extends State<CatalogEditor> {
   final form = GlobalKey<FormState>();
-  late final TextEditingController name, code, width, height, price, order;
+  late final TextEditingController name,
+      code,
+      width,
+      height,
+      price,
+      order,
+      tags;
   late bool active, featured, isNew;
   String? categoryImageUrl, editingId, error;
   late List<TattooImage> images;
@@ -47,6 +54,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
     editingId = widget.isCategory ? c?.id : p?.id;
     name = TextEditingController(text: widget.isCategory ? c?.name : p?.name);
     code = TextEditingController(text: p?.code);
+    tags = TextEditingController(text: p?.tags.join('، ') ?? '');
     width = TextEditingController(text: p?.width?.toString() ?? '');
     height = TextEditingController(text: p?.height?.toString() ?? '');
     price = TextEditingController(text: p?.price?.toString() ?? '');
@@ -65,7 +73,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
 
   @override
   void dispose() {
-    for (final c in [name, code, width, height, price, order]) {
+    for (final c in [name, code, width, height, price, order, tags]) {
       c.dispose();
     }
     for (final upload in staged.values) {
@@ -157,6 +165,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
       if (!widget.isCategory) {
         data.addAll({
           'code': code.text.trim().toUpperCase(),
+          'tags': parseCatalogTags(tags.text),
           'category_ids': categoryIds.toList(),
           'audiences': audiences.map((value) => value.name).toList(),
           'body_placements': bodyPlacements.map((value) => value.name).toList(),
@@ -185,6 +194,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
           editingId = null;
           code.clear();
           name.clear();
+          tags.clear();
           images.clear();
           categoryImageUrl = null;
           active = true;
@@ -214,7 +224,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
   }
 
   String? positive(String? v) {
-    if (v == null || v.isEmpty) return null;
+    if (v == null || v.isEmpty) return 'أدخل القياس بالسنتيمتر';
     final n = double.tryParse(v);
     return n != null && n.isFinite && n > 0 && n < 1000000
         ? null
@@ -373,7 +383,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
                     controller: code,
                     textDirection: TextDirection.ltr,
                     decoration: const InputDecoration(
-                      labelText: 'رقم التصميم',
+                      labelText: 'كود الوشم (للإدارة)',
                       hintText: 'G2G-001',
                     ),
                     validator: (v) =>
@@ -390,11 +400,12 @@ class _CatalogEditorState extends State<CatalogEditor> {
                   decoration: InputDecoration(
                     labelText: widget.isCategory
                         ? 'اسم التصنيف بالعربي'
-                        : 'اسم الوشم (اختياري)',
+                        : 'اسم الوشم الظاهر للزبون',
                   ),
-                  validator: (v) =>
-                      widget.isCategory && (v?.trim().isEmpty ?? true)
-                      ? 'أدخل اسم التصنيف'
+                  validator: (v) => (v?.trim().isEmpty ?? true)
+                      ? (widget.isCategory
+                            ? 'أدخل اسم التصنيف'
+                            : 'أدخل اسم الوشم')
                       : null,
                 ),
                 if (!widget.isCategory) ...[
@@ -412,6 +423,24 @@ class _CatalogEditorState extends State<CatalogEditor> {
                   }, categoryIds),
                   if (widget.categories.isEmpty)
                     const Text('أضف تصنيف أولاً حتى تقدر تحفظ الوشم.'),
+                  TextFormField(
+                    controller: tags,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'وسوم البحث',
+                      hintText: 'وردة، ناعم، طبيعة، floral',
+                      helperText: 'افصل الوسوم بفاصلة. أضف مرادفات وكلمات عربي وإنكليزي.',
+                      helperMaxLines: 2,
+                    ),
+                    validator: (value) {
+                      final parsed = parseCatalogTags(value ?? '');
+                      return parsed.length > 30 ||
+                              parsed.any((tag) => tag.runes.length > 64)
+                          ? 'حتى 30 وسم، وكل وسم بحد أقصى 64 حرف'
+                          : null;
+                    },
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

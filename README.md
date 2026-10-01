@@ -15,7 +15,7 @@ A mobile-first Flutter Web catalog for Iraq. Customers browse, select designs on
 flutter pub get
 ```
 
-Test mode is enabled by default for now. Run `flutter run -d chrome` to browse 36 temporary designs across four categories, with bundled placeholder artwork and no Supabase connection. Search, sorting, pagination, details, selections, and image export work locally. Admin sign-in and editing are disabled in this mode. The inventory resets with the app; test selections persist separately from real catalog selections.
+Test mode is enabled by default for now. Run `flutter run -d chrome` to browse 36 named temporary designs across four categories and six exact sizes, with search tags, bundled placeholder galleries, and no Supabase connection. Search, sorting, pagination, details, selections, and image export work locally. Admin sign-in and editing are disabled in this mode. The inventory resets with the app; test selections persist separately from real catalog selections.
 
 Control the mode with `USE_TEST_DATA` in your configuration JSON or `--dart-define=USE_TEST_DATA=true` / `--dart-define=USE_TEST_DATA=false`. Restart/rebuild after changing it; hot reload does not apply compile-time flags. Test mode takes precedence even when Supabase credentials are supplied.
 
@@ -33,7 +33,7 @@ The legacy name `SUPABASE_ANON_KEY` accepts either an anon key or the newer publ
 
 ## Database, RLS, and Storage
 
-On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply `202609300001_tattoo_filters.sql` and then `202609300002_tattoo_images.sql` before using this version with Supabase. Alternatively link a project and apply migrations using the Supabase CLI:
+On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610010001_names_sizes_tags.sql`, before using this version with Supabase. Alternatively link a project and apply migrations using the Supabase CLI:
 
 ```sh
 npx supabase login
@@ -46,6 +46,9 @@ The migration creates:
 - `categories`, `products`, many-to-many `product_categories`, and an administrator allowlist `admin_users`.
 - Each tattoo has one or both audiences (رجالي / نسائي), multiple body placements, and multiple categories. Main audience filters include shared designs under either audience. Multiple selected body placements match any selected place; audience, placement, category, and search filters combine together.
 - The `catalog_products` view aggregates category memberships before pagination and applies caller RLS. Product saves use the transactional `save_catalog_product` RPC.
+- Customer cards, details, selections, accessibility labels, and exported images display the tattoo name. Codes remain in admin screens and admin search. This is a presentation distinction; codes are not secrets and are still present in catalog records.
+- Exact size chips use distinct width × height pairs from publicly available inventory (`catalog_available_sizes`). Selecting several sizes matches any complete pair, preserving orientation; 5 × 8 and 8 × 5 are different sizes. The existing size sort still orders by area.
+- Customer search matches every word across the name and tags, allowing partial matches. It ignores English case, Arabic diacritics/tatweel, and common Arabic letter variants. Add synonyms or English tags to make those terms searchable. Admin search additionally includes the code. Normalized search columns have trigram indexes.
 - Foreign keys, unique product codes, positive dimensions, nullable nonnegative prices, sort fields, timestamps, update triggers, area sorting, and indexes including trigram name/code search.
 - Row-level security on every public application table.
 - Public read access only for active products with at least one active category. A tattoo assigned to an active and a hidden category stays public, but its hidden category membership is omitted for public users. Direct product URLs and search follow the same rule. Explicit query filters apply even if an administrator is browsing the customer UI.
@@ -73,9 +76,9 @@ values ('REPLACE-WITH-AUTH-USER-UUID');
 1. Open **التصنيفات** in the admin area and tap **+**.
 2. Enter `وشومات سوار`, upload its image if available, set the numeric sort order, and save.
 3. Open **المنتجات**, tap **+**, add one or more tattoo images, and enter a unique code such as `G2G-001`. Use **إضافة صورة** again for each additional image. The first image is the cover for cards and selection exports; use the star button to promote another image, or the delete button to remove an image from the gallery. At least one image is required. Customers can swipe, use arrows, or tap thumbnails to see every image and zoom into details.
-4. Select رجالي, نسائي, or both; choose one or more body placements and one or more categories. Enter dimensions and price if wanted. Blank prices/dimensions are hidden publicly.
+4. Enter the required customer-facing tattoo name and exact width and height in centimeters. Select رجالي, نسائي, or both; choose one or more body placements and one or more categories. Add search tags separated by Arabic/English commas, semicolons, or newlines (up to 30 tags, 64 characters each); normalized duplicates are removed. Price remains optional.
 5. Set **ظاهر بالكتالوج**, **مميز**, and **وصل حديثاً** as needed.
-6. Use **حفظ وإضافة وشم آخر** to keep the audiences, placements, categories, dimensions, and price but clear the code, name, and image for the next design.
+6. Use **حفظ وإضافة وشم آخر** to keep the audiences, placements, categories, dimensions, and price but clear the code, name, tags, and images for the next design.
 7. To edit, tap a record. Use the sort-order number to reorder. Hide unavailable designs instead of deleting them. Deleting a category that contains products is prevented by its foreign key.
 
 Uploads validate file extension, magic bytes, decoded dimensions, and size. Images above 24 megapixels are rejected before full decode. Original tattoo bytes are stored unmodified. A proportional 600-pixel PNG thumbnail preserves transparency. Category images use the optimized version. Failed/cancelled uploads attempt to remove newly staged objects. Replaced, previously saved images are intentionally retained; periodically review unreferenced objects in Storage before deleting them.
@@ -125,7 +128,7 @@ python tool/serve.py --port 8090 --directory build/web
 
 ## Sharing behavior and CORS
 
-`SelectionRenderer` downloads each selected original image as bytes, decodes it with Flutter, and draws it proportionally using `BoxFit.contain` into a **1200 × 1680 PNG**. Six designs fit on each page; the last page expands for fewer designs, and one design receives a large single layout. Pages contain the brand, actual artwork, matching product codes/dimensions, page count, and Instagram handle. Full-resolution requests happen on details/export, not initial card loading.
+`SelectionRenderer` downloads each selected cover image as bytes, decodes it with Flutter, and draws it proportionally using `BoxFit.contain` into a **1200 × 1680 PNG**. Six designs fit on each page; the last page expands for fewer designs, and one design receives a large single layout. Pages contain the brand, actual artwork, tattoo names/dimensions, page count, and Instagram handle. Full-resolution requests happen on details/export, not initial card loading.
 
 Generation is sequential and disposes decoded images after drawing each one. If an image fails to load, generation fails visibly and the local selections remain. It never shares an incomplete grid while silently skipping an image. Availability and current product data are rechecked before generation; removed designs are reported and the customer can review before retrying.
 
@@ -148,7 +151,7 @@ Supabase public Storage normally serves the CORS headers required for byte fetch
 - `lib/ui/customer`, `lib/ui/admin`, `lib/ui/widgets`: screens and reusable presentation.
 - `lib/app.dart`: clean, directly loadable routes.
 
-No database queries are embedded in UI widgets. Bulk upload can call `save_catalog_product` with `category_ids`, `audiences`, and `body_placements`. The migration backfills existing category assignments and defaults existing tattoos to both audiences, with no assumed body placement; select placements when editing these records. Saved selections from the old single-category format still load. SQL uniqueness is the final protection against concurrent duplicate product codes.
+No database queries are embedded in UI widgets. Bulk upload calls `save_catalog_product` with the required `name_ar`, `code`, `width_cm`, `height_cm`, `category_ids`, `audiences`, and `body_placements`, plus optional `tags` and gallery fields. Migrations backfill existing category assignments and default existing tattoos to both audiences, with no assumed body placement. Previously unnamed tattoos receive the neutral name `وشم عشبي`; replace it when editing. Existing missing dimensions are not invented and do not appear as size options until completed. Saved selections from older formats still load. SQL uniqueness is the final protection against concurrent duplicate product codes.
 
 To replace the wordmark, bundle your logo asset in `pubspec.yaml` and set `LOGO_ASSET` in the configuration JSON. Both the UI and export renderer read it. The Arabic font is bundled with its OFL license in `assets/fonts`.
 

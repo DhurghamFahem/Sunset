@@ -12,6 +12,7 @@ class CatalogController extends ChangeNotifier {
   String? categoryId;
   TattooAudience? audience;
   List<BodyPlacement> bodyPlacements = [];
+  List<TattooSize> sizes = [], availableSizes = [];
   List<Tattoo> products = [];
   List<Category> categories = [];
   String search = '';
@@ -22,6 +23,15 @@ class CatalogController extends ChangeNotifier {
   bool _disposed = false;
   Timer? _debounce;
   Future<void> initialize() async {
+    final sizeOptions = repository
+        .availableSizes()
+        .then((value) {
+          if (!_disposed) {
+            availableSizes = value;
+            notifyListeners();
+          }
+        })
+        .catchError((Object _) {});
     final cat = repository
         .categories()
         .then((value) {
@@ -33,6 +43,7 @@ class CatalogController extends ChangeNotifier {
         .catchError((Object _) {});
     await reload();
     await cat;
+    await sizeOptions;
   }
 
   void setSearch(String value) {
@@ -68,6 +79,14 @@ class CatalogController extends ChangeNotifier {
   void clearFilters() {
     audience = null;
     bodyPlacements = [];
+    sizes = [];
+    reload();
+  }
+
+  void toggleSize(TattooSize value) {
+    sizes = sizes.contains(value)
+        ? sizes.where((item) => item != value).toList()
+        : [...sizes, value];
     reload();
   }
 
@@ -93,6 +112,7 @@ class CatalogController extends ChangeNotifier {
           categoryId: categoryId,
           audience: audience,
           bodyPlacements: List.unmodifiable(bodyPlacements),
+          sizes: List.unmodifiable(sizes),
           search: search,
           sort: sort,
           offset: _offset,

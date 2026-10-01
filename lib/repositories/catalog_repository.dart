@@ -2,8 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config.dart';
 import '../models/catalog.dart';
+import '../models/catalog_search.dart';
 
 abstract class CatalogRepository {
+  Future<List<TattooSize>> availableSizes();
   Future<List<Category>> categories({bool admin = false});
   Future<List<Tattoo>> products(CatalogQuery query);
   Future<Tattoo?> product(String id);
@@ -13,6 +15,19 @@ abstract class CatalogRepository {
 class SupabaseCatalogRepository implements CatalogRepository {
   SupabaseCatalogRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<List<TattooSize>> availableSizes() async {
+    final rows = await client.rpc('catalog_available_sizes');
+    return (rows as List)
+        .map(
+          (row) => TattooSize(
+            (row['width_cm'] as num).toDouble(),
+            (row['height_cm'] as num).toDouble(),
+          ),
+        )
+        .toList();
+  }
+
   @override
   Future<List<Category>> categories({bool admin = false}) async {
     var q = client.from('categories').select();
@@ -43,11 +58,18 @@ class SupabaseCatalogRepository implements CatalogRepository {
         query.bodyPlacements.map((value) => value.name).toList(),
       );
     }
-    final search = query.search
-        .replaceAll(RegExp(r'[^\p{L}\p{N}\s-]', unicode: true), '')
-        .trim();
-    if (search.isNotEmpty) {
-      q = q.or('code.ilike.%$search%,name_ar.ilike.%$search%');
+    if (query.sizes.isNotEmpty) {
+      q = q.or(
+        query.sizes
+            .map(
+              (size) =>
+                  'and(width_cm.eq.${size.width},height_cm.eq.${size.height})',
+            )
+            .join(','),
+      );
+    }
+    for (final term in catalogSearchTerms(query.search)) {
+      q = q.ilike(query.admin ? 'admin_search_text' : 'search_text', '%$term%');
     }
     if (query.sort == CatalogSort.featured) q = q.eq('featured', true);
     final String order;
@@ -104,6 +126,8 @@ class SupabaseCatalogRepository implements CatalogRepository {
 
 class UnconfiguredCatalogRepository implements CatalogRepository {
   Never _missing() => throw StateError('Catalog is not configured');
+  @override
+  Future<List<TattooSize>> availableSizes() async => _missing();
   @override
   Future<List<Category>> categories({bool admin = false}) async => _missing();
   @override

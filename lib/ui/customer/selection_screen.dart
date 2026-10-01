@@ -135,7 +135,10 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           child: SizedBox(
                             width: 100,
                             height: 115,
-                            child: CatalogImage(p.thumbnail, label: p.code),
+                            child: CatalogImage(
+                              p.thumbnail,
+                              label: p.displayName,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -144,10 +147,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                p.code,
-                                textDirection: TextDirection.ltr,
+                                p.displayName,
                                 style: const TextStyle(
-                                  fontFamily: 'sans-serif',
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -169,7 +170,7 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           ),
                         ),
                         IconButton(
-                          tooltip: 'إزالة ${p.code}',
+                          tooltip: 'إزالة ${p.displayName}',
                           onPressed: busy ? null : () => selection.toggle(p),
                           icon: const Icon(Icons.close, size: 20),
                         ),

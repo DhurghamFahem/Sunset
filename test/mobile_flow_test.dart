@@ -45,6 +45,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('اختار وشمك 🌿'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -350));
+      await tester.pumpAndSettle();
       final button = find.text('اختيار').first;
       await Scrollable.ensureVisible(tester.element(button), alignment: 0.5);
       await tester.pumpAndSettle();
@@ -84,6 +86,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilterChip, 'المعصم'));
       await tester.pumpAndSettle();
+      final size = find.widgetWithText(FilterChip, '3 × 5 سم');
+      await Scrollable.ensureVisible(tester.element(size), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(size);
+      await tester.pumpAndSettle();
+      final search = find.byType(TextField);
+      await Scrollable.ensureVisible(tester.element(search), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.enterText(search, 'زَهْرَة');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
       final category = find.text('أغصان وأوراق');
       await Scrollable.ensureVisible(tester.element(category), alignment: 0.5);
       await tester.pumpAndSettle();
@@ -99,6 +112,9 @@ void main() {
         expect(card.product.audiences, contains(TattooAudience.men));
         expect(card.product.bodyPlacements, contains(BodyPlacement.wrist));
         expect(card.product.categoryIds, contains('test-branches'));
+        expect(card.product.size, const TattooSize(3, 5));
+        expect(find.text(card.product.displayName), findsWidgets);
+        expect(find.text(card.product.code), findsNothing);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

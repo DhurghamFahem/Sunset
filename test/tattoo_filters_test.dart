@@ -62,6 +62,7 @@ void main() {
           audience: TattooAudience.men,
           bodyPlacements: [BodyPlacement.foot, BodyPlacement.wrist],
           search: 'TEST-001',
+          admin: true,
         ),
       );
       expect(matches.single.code, 'TEST-001');
@@ -71,6 +72,7 @@ void main() {
             categoryId: 'test-stars',
             audience: TattooAudience.men,
             search: 'TEST-001',
+            admin: true,
           ),
         ),
         isEmpty,
@@ -80,6 +82,7 @@ void main() {
           const CatalogQuery(
             bodyPlacements: [BodyPlacement.back],
             search: 'TEST-001',
+            admin: true,
           ),
         ),
         isEmpty,

@@ -5,6 +5,7 @@ Tattoo fixture(int i, {String category = 'bracelets', int? price = 5000}) =>
     Tattoo(
       id: '$i',
       code: 'G2G-${i.toString().padLeft(3, '0')}',
+      name: 'وشم تجريبي $i',
       imageUrl: 'https://example.invalid/$i.png',
       thumbnailUrl: 'https://example.invalid/thumb-$i.png',
       categoryIds: [category],
@@ -14,6 +15,12 @@ Tattoo fixture(int i, {String category = 'bracelets', int? price = 5000}) =>
     );
 
 class MemoryCatalog implements CatalogRepository {
+  @override
+  Future<List<TattooSize>> availableSizes() async => data
+      .map((product) => product.size)
+      .whereType<TattooSize>()
+      .toSet()
+      .toList();
   MemoryCatalog({List<Tattoo>? products})
     : data = products ?? List.generate(30, (i) => fixture(i + 1));
   final List<Tattoo> data;

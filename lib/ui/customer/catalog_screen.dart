@@ -135,16 +135,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 ),
                             ],
                           ),
-                          if (c.audience != null || c.bodyPlacements.isNotEmpty)
+                          if (c.availableSizes.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            const Text('القياسات المتوفرة (العرض × الارتفاع)'),
+                            const SizedBox(height: 6),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  for (final size in c.availableSizes)
+                                    Padding(
+                                      padding: const EdgeInsetsDirectional.only(
+                                        end: 10,
+                                      ),
+                                      child: FilterChip(
+                                        label: Text(
+                                          size.label,
+                                          textDirection: TextDirection.ltr,
+                                        ),
+                                        selected: c.sizes.contains(size),
+                                        onSelected: (_) => c.toggleSize(size),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (c.audience != null ||
+                              c.bodyPlacements.isNotEmpty ||
+                              c.sizes.isNotEmpty)
                             TextButton(
                               onPressed: c.clearFilters,
-                              child: const Text('مسح فلاتر النوع والمكان'),
+                              child: const Text(
+                                'مسح فلاتر النوع والمكان والقياس',
+                              ),
                             ),
                           const SizedBox(height: 12),
                           TextField(
                             onChanged: c.setSearch,
                             decoration: const InputDecoration(
-                              hintText: 'ابحث عن وشم أو رقم التصميم',
+                              hintText: 'ابحث باسم الوشم أو وصفه أو وسومه',
                               hintStyle: TextStyle(fontSize: 14),
                               prefixIcon: Icon(Icons.search),
                             ),
@@ -311,14 +341,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         title:
                             c.search.isNotEmpty ||
                                 c.audience != null ||
-                                c.bodyPlacements.isNotEmpty
+                                c.bodyPlacements.isNotEmpty ||
+                                c.sizes.isNotEmpty
                             ? 'ما لقينا وشم يطابق هالفلاتر'
                             : 'قريباً نضيف موديلات جديدة لهذا القسم 🌿',
                         detail:
                             c.search.isNotEmpty ||
                                 c.audience != null ||
-                                c.bodyPlacements.isNotEmpty
-                            ? 'جرّب تغيّر البحث أو النوع أو مكان الوشم.'
+                                c.bodyPlacements.isNotEmpty ||
+                                c.sizes.isNotEmpty
+                            ? 'جرّب تغيّر البحث أو النوع أو مكان الوشم أو القياس.'
                             : null,
                       ),
                     ),

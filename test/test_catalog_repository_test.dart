@@ -32,7 +32,7 @@ void main() {
     expect(matches, hasLength(9));
     expect(matches.every((p) => p.categoryIds.contains(category.id)), isTrue);
     final byCode = await repository.products(
-      const CatalogQuery(search: 'test-002'),
+      const CatalogQuery(search: 'test-002', admin: true),
     );
     expect(byCode.single.code, 'TEST-002');
     final featured = await repository.products(
@@ -63,7 +63,9 @@ void main() {
         products.skip(known.length).every((p) => value(p) == null),
         isTrue,
       );
-      expect(known.length, lessThan(products.length));
+      if (sort == CatalogSort.price) {
+        expect(known.length, lessThan(products.length));
+      }
     }
     final newest = await repository.products(
       const CatalogQuery(sort: CatalogSort.newest),

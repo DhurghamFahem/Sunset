@@ -2,6 +2,20 @@ import '../config.dart';
 
 typedef Json = Map<String, dynamic>;
 
+class TattooSize {
+  const TattooSize(this.width, this.height);
+  final double width, height;
+  String get label => '${_number(width)} × ${_number(height)} سم';
+  static String _number(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+  @override
+  bool operator ==(Object other) =>
+      other is TattooSize && width == other.width && height == other.height;
+  @override
+  int get hashCode => Object.hash(width, height);
+}
+
 enum TattooAudience {
   men('رجالي'),
   women('نسائي');
@@ -65,6 +79,7 @@ class Tattoo {
     required this.code,
     required this.imageUrl,
     this.name,
+    this.tags = const [],
     this.categoryIds = const [],
     this.audiences = const [TattooAudience.men, TattooAudience.women],
     this.bodyPlacements = const [],
@@ -80,6 +95,11 @@ class Tattoo {
   });
   final String id, code, imageUrl;
   final String? name, thumbnailUrl;
+  final List<String> tags;
+  String get displayName =>
+      name?.trim().isNotEmpty == true ? name!.trim() : 'وشم عشبي';
+  TattooSize? get size =>
+      width == null || height == null ? null : TattooSize(width!, height!);
   final List<TattooImage> additionalImages;
   List<TattooImage> get images => List.unmodifiable([
     TattooImage(url: imageUrl, thumbnailUrl: thumbnailUrl),
@@ -93,12 +113,8 @@ class Tattoo {
   final bool active, featured, isNew;
   final int sortOrder;
   String get thumbnail => thumbnailUrl ?? imageUrl;
-  String get dimensions => width == null || height == null
-      ? ''
-      : '${_n(width!)} × ${_n(height!)} سم';
+  String get dimensions => size?.label ?? '';
   String get formattedPrice => price == null ? '' : AppConfig.money(price!);
-  static String _n(double v) =>
-      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
   factory Tattoo.fromJson(Json j) => Tattoo(
     id: j['id'] as String,
     code: j['code'] as String,
@@ -111,6 +127,7 @@ class Tattoo {
       ),
     ),
     name: j['name_ar'] as String?,
+    tags: List<String>.unmodifiable(j['tags'] as List? ?? []),
     // Preserve selections saved before multi-category support.
     categoryIds: List<String>.unmodifiable(
       j['category_ids'] as List? ??
@@ -144,6 +161,7 @@ class Tattoo {
         .map((image) => image.toJson())
         .toList(),
     'name_ar': name,
+    'tags': tags,
     'category_ids': categoryIds,
     'audiences': audiences.map((value) => value.name).toList(),
     'body_placements': bodyPlacements.map((value) => value.name).toList(),
@@ -164,6 +182,7 @@ class CatalogQuery {
     this.categoryId,
     this.audience,
     this.bodyPlacements = const [],
+    this.sizes = const [],
     this.search = '',
     this.sort = CatalogSort.curated,
     this.offset = 0,
@@ -172,6 +191,7 @@ class CatalogQuery {
   final String? categoryId;
   final TattooAudience? audience;
   final List<BodyPlacement> bodyPlacements;
+  final List<TattooSize> sizes;
   final String search;
   final CatalogSort sort;
   final int offset;

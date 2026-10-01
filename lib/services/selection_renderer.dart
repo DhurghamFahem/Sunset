@@ -104,11 +104,10 @@ class SelectionRenderer {
         codec.dispose();
         _text(
           canvas,
-          product.code,
+          product.displayName,
           Rect.fromLTWH(x + 12, y + cellHeight - 112, cellWidth - 24, 46),
           size: 29,
           bold: true,
-          latin: true,
         );
         if (product.dimensions.isNotEmpty) {
           _text(
@@ -174,6 +173,8 @@ class SelectionRenderer {
       ),
       textDirection: latin ? TextDirection.ltr : TextDirection.rtl,
       textAlign: TextAlign.center,
+      maxLines: 1,
+      ellipsis: '…',
     );
     painter.layout(minWidth: rect.width, maxWidth: rect.width);
     painter.paint(canvas, Offset(rect.left, rect.top));

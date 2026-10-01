@@ -1,5 +1,6 @@
 import '../config.dart';
 import '../models/catalog.dart';
+import '../models/catalog_search.dart';
 import 'catalog_repository.dart';
 
 /// Temporary, local-only inventory; never reads or writes Supabase.
@@ -39,6 +40,12 @@ class TestCatalogRepository implements CatalogRepository {
       id: 'test-tattoo-$number',
       code: 'TEST-$number',
       name: '${category.name} ${index ~/ _categories.length + 1}',
+      tags: switch (index % 4) {
+        0 => ['زهرة', 'نبات', 'ناعم', 'floral'],
+        1 => ['أوراق', 'طبيعة', 'غصن', 'botanical'],
+        2 => ['نجمة', 'سماء', 'بسيط', 'stars'],
+        _ => ['حب', 'قلب', 'ناعم', 'love'],
+      },
       categoryIds: [
         category.id,
         if (index % 3 == 0) _categories[(index + 1) % _categories.length].id,
@@ -58,8 +65,8 @@ class TestCatalogRepository implements CatalogRepository {
           url: category.imageUrl!.replaceFirst('.png', '-alternate.png'),
         ),
       ],
-      width: index % 7 == 0 ? null : 3.0 + index % 6,
-      height: index % 7 == 0 ? null : 5.0 + index % 9,
+      width: const [3.0, 5.0, 8.0, 10.0, 12.0, 15.0][index % 6],
+      height: const [5.0, 8.0, 10.0, 15.0, 18.0, 20.0][index % 6],
       price: index % 8 == 0 ? null : 3000 + (index % 10) * 1000,
       featured: index % 3 == 0,
       isNew: index >= 28,
@@ -72,21 +79,29 @@ class TestCatalogRepository implements CatalogRepository {
       List.of(_categories);
 
   @override
+  Future<List<TattooSize>> availableSizes() async =>
+      _products.map((product) => product.size!).toSet().toList()
+        ..sort((a, b) => (a.width * a.height).compareTo(b.width * b.height));
+
+  @override
   Future<List<Tattoo>> products(CatalogQuery query) async {
-    final search = query.search
-        .replaceAll(RegExp(r'[^\p{L}\p{N}\s-]', unicode: true), '')
-        .trim()
-        .toLowerCase();
+    final terms = catalogSearchTerms(query.search);
     final matches = _products.where((product) {
+      final searchable = normalizeCatalogSearch(
+        [
+          product.name ?? '',
+          ...product.tags,
+          if (query.admin) product.code,
+        ].join(' '),
+      );
       return (query.categoryId == null ||
               product.categoryIds.contains(query.categoryId)) &&
           (query.audience == null ||
               product.audiences.contains(query.audience)) &&
           (query.bodyPlacements.isEmpty ||
               product.bodyPlacements.any(query.bodyPlacements.contains)) &&
-          (search.isEmpty ||
-              product.code.toLowerCase().contains(search) ||
-              (product.name?.toLowerCase().contains(search) ?? false)) &&
+          (query.sizes.isEmpty || query.sizes.contains(product.size)) &&
+          terms.every(searchable.contains) &&
           (query.sort != CatalogSort.featured || product.featured);
     }).toList();
     matches.sort((a, b) {
