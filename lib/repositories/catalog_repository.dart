@@ -5,6 +5,7 @@ import '../models/catalog.dart';
 import '../models/catalog_search.dart';
 
 abstract class CatalogRepository {
+  Future<List<String>> availableTags();
   Future<List<TattooSize>> availableSizes();
   Future<List<Category>> categories({bool admin = false});
   Future<List<Tattoo>> products(CatalogQuery query);
@@ -15,6 +16,9 @@ abstract class CatalogRepository {
 class SupabaseCatalogRepository implements CatalogRepository {
   SupabaseCatalogRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<List<String>> availableTags() async =>
+      List<String>.from(await client.rpc('catalog_available_tags') as List);
   @override
   Future<List<TattooSize>> availableSizes() async {
     final rows = await client.rpc('catalog_available_sizes');
@@ -51,6 +55,9 @@ class SupabaseCatalogRepository implements CatalogRepository {
     }
     if (query.audience != null) {
       q = q.contains('audiences', [query.audience!.name]);
+    }
+    if (query.tags.isNotEmpty) {
+      q = q.overlaps('tags', query.tags);
     }
     if (query.bodyPlacements.isNotEmpty) {
       q = q.overlaps(
@@ -126,6 +133,8 @@ class SupabaseCatalogRepository implements CatalogRepository {
 
 class UnconfiguredCatalogRepository implements CatalogRepository {
   Never _missing() => throw StateError('Catalog is not configured');
+  @override
+  Future<List<String>> availableTags() async => _missing();
   @override
   Future<List<TattooSize>> availableSizes() async => _missing();
   @override

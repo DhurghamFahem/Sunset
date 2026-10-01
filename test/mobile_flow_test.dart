@@ -91,6 +91,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(size);
       await tester.pumpAndSettle();
+      final tag = find.byKey(const ValueKey('tag-filter-floral'));
+      await Scrollable.ensureVisible(tester.element(tag), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(tag);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(tag).selected, isTrue);
       final search = find.byType(TextField);
       await Scrollable.ensureVisible(tester.element(search), alignment: 0.5);
       await tester.pumpAndSettle();
@@ -113,10 +119,18 @@ void main() {
         expect(card.product.bodyPlacements, contains(BodyPlacement.wrist));
         expect(card.product.categoryIds, contains('test-branches'));
         expect(card.product.size, const TattooSize(3, 5));
+        expect(card.product.tags, contains('floral'));
         expect(find.text(card.product.displayName), findsWidgets);
         expect(find.text(card.product.code), findsNothing);
       }
       expect(tester.takeException(), isNull);
+      final allTags = find.widgetWithText(ChoiceChip, 'كل الوسوم');
+      await Scrollable.ensureVisible(tester.element(allTags), alignment: 0.5);
+      await tester.pumpAndSettle();
+      await tester.tap(allTags);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(tag).selected, isFalse);
+      expect(tester.widget<FilterChip>(size).selected, isTrue);
       await tester.pumpWidget(const SizedBox());
       selection.dispose();
     },

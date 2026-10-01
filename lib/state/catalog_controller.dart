@@ -13,6 +13,7 @@ class CatalogController extends ChangeNotifier {
   TattooAudience? audience;
   List<BodyPlacement> bodyPlacements = [];
   List<TattooSize> sizes = [], availableSizes = [];
+  List<String> tags = [], availableTags = [];
   List<Tattoo> products = [];
   List<Category> categories = [];
   String search = '';
@@ -23,6 +24,15 @@ class CatalogController extends ChangeNotifier {
   bool _disposed = false;
   Timer? _debounce;
   Future<void> initialize() async {
+    final tagOptions = repository
+        .availableTags()
+        .then((value) {
+          if (!_disposed) {
+            availableTags = value;
+            notifyListeners();
+          }
+        })
+        .catchError((Object _) {});
     final sizeOptions = repository
         .availableSizes()
         .then((value) {
@@ -44,6 +54,7 @@ class CatalogController extends ChangeNotifier {
     await reload();
     await cat;
     await sizeOptions;
+    await tagOptions;
   }
 
   void setSearch(String value) {
@@ -80,6 +91,7 @@ class CatalogController extends ChangeNotifier {
     audience = null;
     bodyPlacements = [];
     sizes = [];
+    tags = [];
     reload();
   }
 
@@ -87,6 +99,18 @@ class CatalogController extends ChangeNotifier {
     sizes = sizes.contains(value)
         ? sizes.where((item) => item != value).toList()
         : [...sizes, value];
+    reload();
+  }
+
+  void toggleTag(String value) {
+    tags = tags.contains(value)
+        ? tags.where((tag) => tag != value).toList()
+        : [...tags, value];
+    reload();
+  }
+
+  void clearTags() {
+    tags = [];
     reload();
   }
 
@@ -113,6 +137,7 @@ class CatalogController extends ChangeNotifier {
           audience: audience,
           bodyPlacements: List.unmodifiable(bodyPlacements),
           sizes: List.unmodifiable(sizes),
+          tags: List.unmodifiable(tags),
           search: search,
           sort: sort,
           offset: _offset,

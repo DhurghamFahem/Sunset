@@ -5,6 +5,9 @@ import 'catalog_repository.dart';
 
 /// Temporary, local-only inventory; never reads or writes Supabase.
 class TestCatalogRepository implements CatalogRepository {
+  @override
+  Future<List<String>> availableTags() async =>
+      _products.expand((product) => product.tags).toSet().toList()..sort();
   static const _categories = [
     Category(
       id: 'test-flowers',
@@ -101,6 +104,7 @@ class TestCatalogRepository implements CatalogRepository {
           (query.bodyPlacements.isEmpty ||
               product.bodyPlacements.any(query.bodyPlacements.contains)) &&
           (query.sizes.isEmpty || query.sizes.contains(product.size)) &&
+          (query.tags.isEmpty || product.tags.any(query.tags.contains)) &&
           terms.every(searchable.contains) &&
           (query.sort != CatalogSort.featured || product.featured);
     }).toList();

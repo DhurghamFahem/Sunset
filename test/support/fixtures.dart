@@ -16,6 +16,9 @@ Tattoo fixture(int i, {String category = 'bracelets', int? price = 5000}) =>
 
 class MemoryCatalog implements CatalogRepository {
   @override
+  Future<List<String>> availableTags() async =>
+      data.expand((product) => product.tags).toSet().toList()..sort();
+  @override
   Future<List<TattooSize>> availableSizes() async => data
       .map((product) => product.size)
       .whereType<TattooSize>()
@@ -44,6 +47,7 @@ class MemoryCatalog implements CatalogRepository {
                   p.audiences.contains(query.audience)) &&
               (query.bodyPlacements.isEmpty ||
                   p.bodyPlacements.any(query.bodyPlacements.contains)) &&
+              (query.tags.isEmpty || p.tags.any(query.tags.contains)) &&
               p.code.contains(query.search),
         )
         .skip(query.offset)

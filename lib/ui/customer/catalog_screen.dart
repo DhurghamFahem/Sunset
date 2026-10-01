@@ -161,13 +161,52 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               ),
                             ),
                           ],
+                          if (c.availableTags.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            const Text('الوسوم'),
+                            const Text(
+                              'اختار وسم أو أكثر لعرض الوشوم اللي تحمل أي منها.',
+                              style: TextStyle(color: muted, fontSize: 12),
+                            ),
+                            const SizedBox(height: 6),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsetsDirectional.only(
+                                      end: 10,
+                                    ),
+                                    child: ChoiceChip(
+                                      label: const Text('كل الوسوم'),
+                                      selected: c.tags.isEmpty,
+                                      onSelected: (_) => c.clearTags(),
+                                    ),
+                                  ),
+                                  for (final tag in c.availableTags)
+                                    Padding(
+                                      padding: const EdgeInsetsDirectional.only(
+                                        end: 10,
+                                      ),
+                                      child: FilterChip(
+                                        key: ValueKey('tag-filter-$tag'),
+                                        label: Text(tag),
+                                        selected: c.tags.contains(tag),
+                                        onSelected: (_) => c.toggleTag(tag),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (c.audience != null ||
                               c.bodyPlacements.isNotEmpty ||
-                              c.sizes.isNotEmpty)
+                              c.sizes.isNotEmpty ||
+                              c.tags.isNotEmpty)
                             TextButton(
                               onPressed: c.clearFilters,
                               child: const Text(
-                                'مسح فلاتر النوع والمكان والقياس',
+                                'مسح فلاتر النوع والمكان والقياس والوسوم',
                               ),
                             ),
                           const SizedBox(height: 12),
@@ -342,15 +381,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             c.search.isNotEmpty ||
                                 c.audience != null ||
                                 c.bodyPlacements.isNotEmpty ||
-                                c.sizes.isNotEmpty
+                                c.sizes.isNotEmpty ||
+                                c.tags.isNotEmpty
                             ? 'ما لقينا وشم يطابق هالفلاتر'
                             : 'قريباً نضيف موديلات جديدة لهذا القسم 🌿',
                         detail:
                             c.search.isNotEmpty ||
                                 c.audience != null ||
                                 c.bodyPlacements.isNotEmpty ||
-                                c.sizes.isNotEmpty
-                            ? 'جرّب تغيّر البحث أو النوع أو مكان الوشم أو القياس.'
+                                c.sizes.isNotEmpty ||
+                                c.tags.isNotEmpty
+                            ? 'جرّب تغيّر البحث أو النوع أو مكان الوشم أو القياس أو الوسوم.'
                             : null,
                       ),
                     ),

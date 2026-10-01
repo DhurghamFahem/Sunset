@@ -183,6 +183,7 @@ class CatalogQuery {
     this.audience,
     this.bodyPlacements = const [],
     this.sizes = const [],
+    this.tags = const [],
     this.search = '',
     this.sort = CatalogSort.curated,
     this.offset = 0,
@@ -192,6 +193,7 @@ class CatalogQuery {
   final TattooAudience? audience;
   final List<BodyPlacement> bodyPlacements;
   final List<TattooSize> sizes;
+  final List<String> tags;
   final String search;
   final CatalogSort sort;
   final int offset;
