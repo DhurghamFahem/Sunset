@@ -49,9 +49,12 @@ class _TattooGalleryState extends State<TattooGallery> {
   Widget build(BuildContext context) => Column(
     children: [
       ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .48,
+          height:
+              (MediaQuery.sizeOf(context).height *
+                      (MediaQuery.sizeOf(context).width < 800 ? .40 : .52))
+                  .clamp(240.0, 620.0),
           child: PageView.builder(
             controller: pages,
             physics: zoomed ? const NeverScrollableScrollPhysics() : null,
@@ -118,7 +121,7 @@ class _TattooGalleryState extends State<TattooGallery> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: current == index ? forest : Colors.transparent,
+                      color: current == index ? forest : line,
                       width: 2,
                     ),
                   ),

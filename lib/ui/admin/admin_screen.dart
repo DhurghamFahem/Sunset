@@ -196,67 +196,86 @@ class _AdminScreenState extends State<AdminScreen> {
   );
   Widget loginView() => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 440),
+      constraints: const BoxConstraints(maxWidth: 500),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(26),
-        child: Form(
-          key: form,
-          child: AutofillGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Icon(Icons.lock_outline, size: 36, color: forest),
-                const SizedBox(height: 18),
-                Text(
-                  'تسجيل دخول الإدارة',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 24),
-                if (admin == null)
-                  const Text(
-                    AppConfig.useTestData
-                        ? 'وضع التجربة مفعّل. إدارة الكتالوج متاحة بعد إيقاف وضع التجربة وربط Supabase.'
-                        : 'أضف إعدادات Supabase عند تشغيل المشروع حتى تقدر تدير الكتالوج.',
-                  ),
-                TextFormField(
-                  controller: email,
-                  keyboardType: TextInputType.emailAddress,
-                  textDirection: TextDirection.ltr,
-                  autofillHints: const [AutofillHints.username],
-                  decoration: const InputDecoration(
-                    labelText: 'البريد الإلكتروني',
-                  ),
-                  validator: (v) =>
-                      v != null && v.contains('@') ? null : 'أدخل بريد صحيح',
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: password,
-                  obscureText: true,
-                  textDirection: TextDirection.ltr,
-                  autofillHints: const [AutofillHints.password],
-                  decoration: const InputDecoration(labelText: 'كلمة المرور'),
-                  validator: (v) =>
-                      v?.isNotEmpty ?? false ? null : 'أدخل كلمة المرور',
-                  onFieldSubmitted: (_) {
-                    if (!busy && admin != null) login();
-                  },
-                ),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Text(
-                      error!,
-                      style: const TextStyle(color: Colors.red),
+        child: StudioPanel(
+          padding: const EdgeInsets.all(28),
+          child: Form(
+            key: form,
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: sage,
+                      child: Icon(Icons.lock_outline, size: 26, color: forest),
                     ),
                   ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: busy || admin == null ? null : login,
-                  child: Text(busy ? 'جاري الدخول…' : 'دخول'),
-                ),
-              ],
+                  const SizedBox(height: 18),
+                  Text(
+                    'تسجيل دخول الإدارة',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'مساحتك لترتيب التصاميم وإدارة مجموعات G2G.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 24),
+                  if (admin == null)
+                    const Text(
+                      AppConfig.useTestData
+                          ? 'وضع التجربة مفعّل. إدارة الكتالوج متاحة بعد إيقاف وضع التجربة وربط Supabase.'
+                          : 'أضف إعدادات Supabase عند تشغيل المشروع حتى تقدر تدير الكتالوج.',
+                    ),
+                  TextFormField(
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    textDirection: TextDirection.ltr,
+                    autofillHints: const [AutofillHints.username],
+                    decoration: const InputDecoration(
+                      labelText: 'البريد الإلكتروني',
+                      prefixIcon: Icon(Icons.mail_outline),
+                    ),
+                    validator: (v) =>
+                        v != null && v.contains('@') ? null : 'أدخل بريد صحيح',
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: password,
+                    obscureText: true,
+                    textDirection: TextDirection.ltr,
+                    autofillHints: const [AutofillHints.password],
+                    decoration: const InputDecoration(
+                      labelText: 'كلمة المرور',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    validator: (v) =>
+                        v?.isNotEmpty ?? false ? null : 'أدخل كلمة المرور',
+                    onFieldSubmitted: (_) {
+                      if (!busy && admin != null) login();
+                    },
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: busy || admin == null ? null : login,
+                    child: Text(busy ? 'جاري الدخول…' : 'دخول'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -268,6 +287,48 @@ class _AdminScreenState extends State<AdminScreen> {
       constraints: const BoxConstraints(maxWidth: 1100),
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'G2G / STUDIO',
+                        style: TextStyle(
+                          color: clay,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      Text(
+                        isCategories ? 'مجموعاتك' : 'مساحة التصاميم',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: sage,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isCategories
+                        ? '${categories.length} تصنيف'
+                        : '${products.length}${more ? '+' : ''} تصميم',
+                    style: const TextStyle(color: forest, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -402,13 +463,16 @@ class _AdminScreenState extends State<AdminScreen> {
                             child: CatalogImage(p.thumbnail, padding: 3),
                           ),
                           title: Text(
-                            p.code,
-                            textDirection: TextDirection.ltr,
+                            p.displayName,
                             textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                           ),
                           subtitle: Text(
                             [
-                              p.name ?? '',
+                              p.code,
                               p.active ? 'ظاهر' : 'مخفي',
                               p.formattedPrice,
                             ].where((v) => v.isNotEmpty).join(' • '),

@@ -32,23 +32,31 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
     String summary,
     List<Widget> choices, {
     bool open = false,
-  }) => ExpansionTile(
-    key: PageStorageKey(title),
-    initiallyExpanded: open,
-    tilePadding: const EdgeInsets.symmetric(horizontal: 20),
-    childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-    title: Text(
-      title,
-      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+  }) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    decoration: BoxDecoration(
+      color: paper,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: line),
     ),
-    subtitle: Text(
-      summary,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(color: muted, fontSize: 12),
+    child: ExpansionTile(
+      key: PageStorageKey(title),
+      initiallyExpanded: open,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 20),
+      childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      ),
+      subtitle: Text(
+        summary,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: muted, fontSize: 12),
+      ),
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [Wrap(spacing: 8, runSpacing: 4, children: choices)],
     ),
-    expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [Wrap(spacing: 8, runSpacing: 4, children: choices)],
   );
 
   Widget chip<T>(T value, String label, Set<T> selected) => FilterChip(
@@ -90,6 +98,16 @@ class _CatalogFilterSheetState extends State<CatalogFilterSheet> {
                       icon: const Icon(Icons.close),
                     ),
                   ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    'حدّد التفاصيل اللي تحبها، ونقرّب لك الاختيار.',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
                 ),
               ),
               Expanded(

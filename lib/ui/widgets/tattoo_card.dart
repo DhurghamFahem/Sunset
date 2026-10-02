@@ -16,13 +16,14 @@ class TattooCard extends StatelessWidget {
       listenable: selection,
       builder: (context, _) {
         final selected = selection.contains(product.id);
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: paper,
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? forest : const Color(0xFFE4E6DF),
+              color: selected ? forest : line,
               width: selected ? 1.7 : 1,
             ),
           ),
@@ -35,36 +36,69 @@ class TattooCard extends StatelessWidget {
                   label: 'عرض ${product.displayName}',
                   child: InkWell(
                     onTap: () => context.push('/tattoo/${product.id}'),
-                    child: CatalogImage(
-                      product.thumbnail,
-                      label: product.displayName,
-                      padding: 18,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CatalogImage(
+                          product.thumbnail,
+                          label: product.displayName,
+                          padding: 22,
+                        ),
+                        if (product.isNew || product.featured)
+                          PositionedDirectional(
+                            top: 10,
+                            start: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: paper.withValues(alpha: .94),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                product.isNew ? 'جديد' : 'مميز',
+                                style: const TextStyle(
+                                  color: forest,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        PositionedDirectional(
+                          bottom: 10,
+                          end: 10,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: paper.withValues(alpha: .9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.north_west,
+                              size: 14,
+                              color: forest,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        product.displayName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    if (product.isNew)
-                      const Text(
-                        'جديد',
-                        style: TextStyle(color: forest, fontSize: 12),
-                      ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+                child: Text(
+                  product.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               Padding(
@@ -76,27 +110,28 @@ class TattooCard extends StatelessWidget {
                   ].where((s) => s.isNotEmpty).join('  •  '),
                   maxLines: 2,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: muted,
                     height: 1.8,
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 3, 8, 6),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
                     minimumSize: const Size(44, 44),
-                    backgroundColor: selected
-                        ? forest
-                        : const Color(0xFFF0F3ED),
-                    foregroundColor: selected ? Colors.white : forest,
+                    backgroundColor: selected ? forest : sage,
+                    foregroundColor: selected ? paper : forest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () => selection.toggle(product),
-                  icon: Icon(selected ? Icons.check : Icons.add, size: 18),
+                  icon: Icon(selected ? Icons.check : Icons.add, size: 17),
                   label: Text(
                     selected ? 'تم الاختيار' : 'اختيار',
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
               ),

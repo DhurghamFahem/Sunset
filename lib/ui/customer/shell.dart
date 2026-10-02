@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
+import '../theme.dart';
 import '../widgets/common.dart';
 
 class CustomerShell extends StatelessWidget {
@@ -16,8 +17,8 @@ class CustomerShell extends StatelessWidget {
       listenable: selection,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          toolbarHeight: 58,
-          titleSpacing: 16,
+          toolbarHeight: MediaQuery.sizeOf(context).width < 600 ? 64 : 84,
+          titleSpacing: 20,
           leading: path == '/'
               ? null
               : IconButton(
@@ -28,9 +29,36 @@ class CustomerShell extends StatelessWidget {
                 ),
           title: InkWell(
             onTap: () => context.go('/'),
-            child: const Brand(size: 28),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Brand(size: 32),
+                if (MediaQuery.sizeOf(context).width >= 700) ...[
+                  const SizedBox(width: 16),
+                  Container(width: 1, height: 26, color: line),
+                  const SizedBox(width: 16),
+                  const Text(
+                    'وشومات تعبّر عنك',
+                    style: TextStyle(fontSize: 12, color: muted),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
+            if (MediaQuery.sizeOf(context).width >= 600)
+              TextButton(
+                onPressed: () => context.go('/'),
+                child: const Text('كل الوشومات'),
+              ),
+            IconButton(
+              tooltip: 'تصفح التصنيفات',
+              onPressed: () => context.push('/categories'),
+              style: IconButton.styleFrom(
+                backgroundColor: path == '/categories' ? sage : null,
+              ),
+              icon: const Icon(Icons.grid_view_outlined, size: 21),
+            ),
             if (!reviewing)
               Padding(
                 padding: const EdgeInsetsDirectional.only(end: 12),
@@ -69,8 +97,8 @@ class CustomerShell extends StatelessWidget {
             ? null
             : Container(
                 decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE2E5DC))),
+                  color: paper,
+                  border: Border(top: BorderSide(color: line)),
                 ),
                 child: SafeArea(
                   top: false,

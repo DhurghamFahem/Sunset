@@ -5,18 +5,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sunset/app.dart';
 import 'package:sunset/app_scope.dart';
 import 'package:sunset/models/catalog.dart';
 import 'package:sunset/repositories/test_catalog_repository.dart';
 import 'package:sunset/services/analytics.dart';
+import 'package:sunset/services/admin_service.dart';
+import 'package:sunset/ui/admin/admin_screen.dart';
 import 'package:sunset/state/selection_store.dart';
 import 'package:sunset/ui/customer/catalog_filter_sheet.dart';
 import 'package:sunset/ui/customer/share_screen.dart';
 import 'package:sunset/ui/widgets/tattoo_card.dart';
 
 import 'support/fixtures.dart';
+
+class PreviewAdmin implements AdminService {
+  @override
+  Stream<Never> get authChanges => const Stream.empty();
+  @override
+  bool get signedIn => true;
+  @override
+  Future<bool> isAdmin() async => true;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +59,7 @@ void main() {
     WidgetTester tester, {
     MemoryCatalog? catalog,
     GlobalKey? capture,
+    AdminService? admin,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final analytics = NoopAnalytics();
@@ -60,6 +75,7 @@ void main() {
             catalog: catalog ?? TestCatalogRepository(),
             selection: selection,
             analytics: analytics,
+            admin: admin,
           ),
         ),
       ),
@@ -110,7 +126,7 @@ void main() {
         viewport(tester, width, 740);
         final capture = GlobalKey();
         final selection = await start(tester, capture: capture);
-        expect(find.text('اختار وشمك 🌿'), findsOneWidget);
+        expect(find.text('تفاصيل صغيرة، تشبهك.'), findsOneWidget);
         expect(find.byType(FilterChip), findsNothing);
         expect(find.byType(ChoiceChip), findsNWidgets(3));
         expect(find.text('اختيار').first.hitTestable(), findsOneWidget);
@@ -138,6 +154,72 @@ void main() {
         selection.dispose();
       },
     );
+  }
+
+  for (final width in [360.0, 1200.0]) {
+    testWidgets('redesigned secondary screens remain usable at $width px', (
+      tester,
+    ) async {
+      viewport(tester, width, 800);
+      final capture = GlobalKey();
+      final selection = await start(tester, capture: capture);
+      final router = GoRouter.of(tester.element(find.byType(TattooCard).first));
+      await tester.tap(find.byTooltip('تصفح التصنيفات'));
+      await tester.pumpAndSettle();
+      expect(find.text('لكل ذوق، حكاية.'), findsOneWidget);
+      await screenshot(tester, capture, 'categories-${width.toInt()}');
+      final product = (await TestCatalogRepository().products(
+        const CatalogQuery(),
+      )).first;
+      router.go('/tattoo/${product.id}');
+      await tester.pumpAndSettle();
+      expect(find.text('أضف لاختياراتي').hitTestable(), findsOneWidget);
+      await screenshot(tester, capture, 'detail-${width.toInt()}');
+      router.go('/selections');
+      await tester.pumpAndSettle();
+      expect(find.text('تصفح الوشومات').hitTestable(), findsOneWidget);
+      await screenshot(tester, capture, 'empty-${width.toInt()}');
+      router.go('/admin');
+      await tester.pumpAndSettle();
+      expect(find.text('تسجيل دخول الإدارة'), findsOneWidget);
+      await screenshot(tester, capture, 'login-${width.toInt()}');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      selection.dispose();
+    });
+
+    testWidgets('management and editor actions fit at $width px', (
+      tester,
+    ) async {
+      viewport(tester, width, 800);
+      final capture = GlobalKey();
+      final selection = await start(
+        tester,
+        capture: capture,
+        admin: PreviewAdmin(),
+      );
+      final router = GoRouter.of(tester.element(find.byType(TattooCard).first));
+      router.go('/admin');
+      await tester.pumpAndSettle();
+      expect(find.byType(AdminScreen), findsOneWidget);
+      await screenshot(tester, capture, 'admin-products-${width.toInt()}');
+      await tester.tap(find.byTooltip('إضافة وشم'));
+      await tester.pumpAndSettle();
+      expect(find.text('حفظ').hitTestable(), findsOneWidget);
+      await screenshot(tester, capture, 'editor-${width.toInt()}');
+      await tester.tap(find.byTooltip('إغلاق'));
+      await tester.pumpAndSettle();
+      router.go('/admin/categories');
+      await tester.pumpAndSettle();
+      await screenshot(tester, capture, 'admin-categories-${width.toInt()}');
+      await tester.tap(find.byTooltip('إضافة تصنيف'));
+      await tester.pumpAndSettle();
+      expect(find.text('حفظ').hitTestable(), findsOneWidget);
+      await screenshot(tester, capture, 'category-editor-${width.toInt()}');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      selection.dispose();
+    });
   }
 
   testWidgets(

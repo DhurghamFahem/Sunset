@@ -93,6 +93,10 @@ class _SelectionScreenState extends State<SelectionScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                     children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8, bottom: 24),
+                        child: JourneySteps(current: 1),
+                      ),
                       Row(
                         children: [
                           Expanded(
@@ -143,9 +147,9 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE5E7DE)),
+                            color: paper,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: line),
                           ),
                           child: Row(
                             children: [
@@ -156,8 +160,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: SizedBox(
-                                    width: 78,
-                                    height: 88,
+                                    width: 88,
+                                    height: 100,
                                     child: CatalogImage(
                                       p.thumbnail,
                                       label: p.displayName,
@@ -230,8 +234,11 @@ class _SelectionScreenState extends State<SelectionScreen> {
                 ),
                 Container(
                   decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Color(0xFFE2E5DC))),
+                    color: paper,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    border: Border.fromBorderSide(BorderSide(color: line)),
                   ),
                   child: SafeArea(
                     top: false,

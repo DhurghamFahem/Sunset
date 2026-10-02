@@ -71,11 +71,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
       builder: (context, _) => LayoutBuilder(
         builder: (context, box) {
           final width = box.maxWidth > 1240 ? 1200.0 : box.maxWidth - 32;
-          final columns = width >= 1050
-              ? 5
-              : width >= 820
+          final columns = width >= 1000
               ? 4
-              : width >= 560
+              : width >= 650
               ? 3
               : 2;
           final category = c.categories
@@ -96,20 +94,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            category?.name ?? 'اختار وشمك 🌿',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: forest,
-                            ),
+                          _CatalogIntro(
+                            title: category?.name,
+                            wide: width >= 650,
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'اللي يعجبك، اضغط عليه «اختيار».',
-                            style: TextStyle(color: muted, fontSize: 13),
-                          ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 20),
                           Row(
                             children: [
                               Expanded(
@@ -164,7 +153,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
                             children: [
@@ -179,6 +168,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                   selected: c.audience == value,
                                   onSelected: (_) => c.setAudience(value),
                                 ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'اكتشف التصاميم',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                c.loading
+                                    ? 'جاري التحميل…'
+                                    : '${c.products.length}${c.hasMore ? '+' : ''} تصميم',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: muted,
+                                ),
+                              ),
                             ],
                           ),
                           if (c.hasFilters)
@@ -213,9 +225,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: columns,
-                      mainAxisSpacing: 14,
-                      crossAxisSpacing: 12,
-                      mainAxisExtent: width < 400 ? 300 : 330,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: width < 600 ? 12 : 20,
+                      mainAxisExtent:
+                          (width < 400
+                              ? 292.0
+                              : width < 650
+                              ? 330.0
+                              : (MediaQuery.sizeOf(context).height - 440).clamp(
+                                  300.0,
+                                  420.0,
+                                )) +
+                          (MediaQuery.textScalerOf(context).scale(14) - 14) * 5,
                     ),
                   ),
                   if (c.failed)
@@ -266,4 +287,68 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
     );
   }
+}
+
+class _CatalogIntro extends StatelessWidget {
+  const _CatalogIntro({this.title, required this.wide});
+  final String? title;
+  final bool wide;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: forest,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          left: wide ? 36 : -22,
+          top: -10,
+          bottom: -20,
+          width: wide ? 220 : 130,
+          child: const BotanicalMark(),
+        ),
+        Padding(
+          padding: EdgeInsets.all(wide ? 24 : 18),
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(end: wide ? 240 : 58),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'G2G  /  HERBAL TATTOOS',
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                    color: Color(0xFFCEDBC6),
+                    fontSize: 10,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  title ?? 'تفاصيل صغيرة، تشبهك.',
+                  style: TextStyle(
+                    color: paper,
+                    fontSize: wide ? 34 : 22,
+                    height: 1.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'اختار وشمك، وخلي الباقي علينا.',
+                  style: TextStyle(
+                    color: const Color(0xFFDEE6D7),
+                    fontSize: wide ? 14 : 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -38,7 +38,7 @@ class CatalogImage extends StatelessWidget {
   final double padding;
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xFFF3F2EC),
+    color: const Color(0xFFF0F1E9),
     child: Padding(
       padding: EdgeInsets.all(padding),
       child: url == null || url!.isEmpty
@@ -98,12 +98,19 @@ class MessagePanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 40, color: forest),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: sage,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 36, color: forest),
+          ),
           const SizedBox(height: 18),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           if (detail != null) ...[
             const SizedBox(height: 10),
@@ -148,3 +155,160 @@ Future<bool> confirm(
       ),
     ) ??
     false;
+
+/// Shared headings keep the customer journey and management views related.
+class PageHeading extends StatelessWidget {
+  const PageHeading({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+  });
+  final String eyebrow, title, description;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          eyebrow,
+          style: const TextStyle(
+            color: clay,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(title, style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 6),
+        Text(description, style: const TextStyle(color: muted, fontSize: 13)),
+      ],
+    ),
+  );
+}
+
+class StudioPanel extends StatelessWidget {
+  const StudioPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: paper,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: line),
+    ),
+    child: child,
+  );
+}
+
+class JourneySteps extends StatelessWidget {
+  const JourneySteps({super.key, required this.current});
+  final int current;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (var i = 0; i < 3; i++) ...[
+        if (i > 0)
+          const Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Divider(),
+            ),
+          ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: i <= current ? forest : sage,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: i < current
+                  ? const Icon(Icons.check, color: paper, size: 16)
+                  : Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        color: i == current ? paper : muted,
+                        fontSize: 12,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              ['اختار', 'راجع', 'شارك'][i],
+              style: TextStyle(
+                color: i == current ? forest : muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ],
+  );
+}
+
+/// A quiet botanical line drawing; decorative and excluded from semantics.
+class BotanicalMark extends StatelessWidget {
+  const BotanicalMark({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      ExcludeSemantics(child: CustomPaint(painter: _BotanicalPainter()));
+}
+
+class _BotanicalPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 200, size.height / 200);
+    final stroke = Paint()
+      ..color = const Color(0xFF829D81)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawOval(
+      const Rect.fromLTWH(18, 8, 156, 180),
+      Paint()..color = const Color(0xFF365B48),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(70, 205)
+        ..cubicTo(95, 156, 125, 92, 107, 12),
+      stroke,
+    );
+    for (var i = 0; i < 6; i++) {
+      final y = 45.0 + i * 24;
+      final x = 112.0 - i * 2;
+      final left = i.isEven;
+      final dx = left ? -55.0 : 55.0;
+      canvas.drawPath(
+        Path()
+          ..moveTo(x, y + 17)
+          ..quadraticBezierTo(x + dx, y + 12, x + dx, y - 22)
+          ..quadraticBezierTo(x + 8, y - 17, x, y + 17),
+        stroke,
+      );
+      canvas.drawLine(Offset(x, y + 17), Offset(x + dx, y - 22), stroke);
+    }
+    canvas.drawCircle(
+      const Offset(161, 31),
+      3,
+      Paint()..color = const Color(0xFFB9C6A3),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _BotanicalPainter oldDelegate) => false;
+}

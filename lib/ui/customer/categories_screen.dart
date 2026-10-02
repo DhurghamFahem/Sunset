@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../models/catalog.dart';
+import '../theme.dart';
 import '../widgets/common.dart';
 
 class CategoriesScreen extends StatefulWidget {
@@ -55,9 +56,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'التصنيفات',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                  child: const PageHeading(
+                    eyebrow: 'مجموعات G2G',
+                    title: 'لكل ذوق، حكاية.',
+                    description: 'استكشف التصنيفات ولقى التصميم اللي يشبهك.',
                   ),
                 ),
               ),
@@ -65,34 +67,65 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: MediaQuery.sizeOf(context).width < 600
+                    crossAxisCount: MediaQuery.sizeOf(context).width < 700
                         ? 2
                         : 4,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: .9,
+                    mainAxisExtent: MediaQuery.sizeOf(context).width < 700
+                        ? 240
+                        : 340,
                   ),
                   delegate: SliverChildBuilderDelegate((context, i) {
                     final c = categories[i];
                     return InkWell(
                       onTap: () => context.push('/category/${c.id}'),
                       borderRadius: BorderRadius.circular(16),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: CatalogImage(c.imageUrl, label: c.name),
+                      child: StudioPanel(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: CatalogImage(
+                                    c.imageUrl,
+                                    label: c.name,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Text(c.name, textAlign: TextAlign.center),
-                          ),
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      c.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.arrow_back,
+                                    size: 18,
+                                    color: forest,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }, childCount: categories.length),

@@ -101,8 +101,10 @@ class _ShareScreenState extends State<ShareScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
+                      const JourneySteps(current: 2),
+                      const SizedBox(height: 24),
                       Text(
-                        'اختياراتك جاهزة 🌿',
+                        'ذوقك صار بصورة.',
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
@@ -122,11 +124,14 @@ class _ShareScreenState extends State<ShareScreen> {
                           onPageChanged: (index) =>
                               setState(() => current = index),
                           itemCount: widget.pages.length,
-                          itemBuilder: (_, i) => Image.memory(
-                            widget.pages[i],
-                            fit: BoxFit.contain,
-                            semanticLabel:
-                                'اختياراتي ${i + 1} من ${widget.pages.length}',
+                          itemBuilder: (_, i) => StudioPanel(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.memory(
+                              widget.pages[i],
+                              fit: BoxFit.contain,
+                              semanticLabel:
+                                  'اختياراتي ${i + 1} من ${widget.pages.length}',
+                            ),
                           ),
                         ),
                       ),
@@ -165,8 +170,11 @@ class _ShareScreenState extends State<ShareScreen> {
                 ),
                 Container(
                   decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Color(0xFFE2E5DC))),
+                    color: paper,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    border: Border.fromBorderSide(BorderSide(color: line)),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
