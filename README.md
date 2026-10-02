@@ -127,6 +127,42 @@ Local release preview, including deep links:
 python tool/serve.py --port 8090 --directory build/web
 ```
 
+### GitHub Pages: deploy with a `[d]` commit
+
+The workflow in `.github/workflows/deploy-pages.yml` builds and deploys when the **latest commit in a push to the repository's default branch** starts with `[d]`, for example `[d] update catalog`. Other pushes show a skipped workflow. When pushing several commits together, only the latest commit's message controls deployment. For squash merges, put the prefix in the final squash commit message.
+
+1. Push this repository, including the workflow, to GitHub.
+2. In **Settings → Pages → Build and deployment**, set **Source** to **GitHub Actions**.
+3. By default, deployments use the bundled test catalog. For real Supabase data, add repository variables under **Settings → Secrets and variables → Actions → Variables**: `USE_TEST_DATA` = `false`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` (the public anon/publishable key). These values are compiled into the public website; never use a service-role key. Local configuration files are not used by this workflow.
+4. Commit and push to the default branch:
+
+   ```sh
+   git commit -m "[d] deploy site"
+   git push
+   ```
+
+   To deploy without changing files, use `git commit --allow-empty -m "[d] deploy site"`, then push.
+
+The workflow uses Flutter 3.47.4, detects the Pages base path (including repository subdirectories and custom domains), and uploads only `build/web`. The deployment URL appears in the Actions run's `github-pages` environment. It also copies `index.html` to `404.html` so direct links such as `/admin` load the Flutter router. GitHub Pages still returns HTTP 404 for these deep-link requests; navigation within the app works normally.
+
+See [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) for repository setup and deployment permissions.
+
+#### Custom domain: getoge.com
+
+In **Settings → Pages → Custom domain**, enter `getoge.com` and save before updating DNS. At your DNS provider, set these records:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | @ | 185.199.108.153 |
+| A | @ | 185.199.109.153 |
+| A | @ | 185.199.110.153 |
+| A | @ | 185.199.111.153 |
+| CNAME | www | YOUR_USERNAME.github.io |
+
+Replace `YOUR_USERNAME` with the GitHub repository owner's username. Once GitHub validates DNS and provisions the certificate, enable **Enforce HTTPS**. Push a new `[d]` commit after saving the custom domain so the workflow rebuilds for the domain's root path.
+
+This Actions deployment reads the domain from GitHub Pages settings; no repository `CNAME` file is required. See [GitHub's custom domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
+
 ## Sharing behavior and CORS
 
 `SelectionRenderer` downloads each selected cover image as bytes, decodes it with Flutter, and draws it proportionally using `BoxFit.contain` into a **1200 × 1680 PNG**. Six designs fit on each page; the last page expands for fewer designs, and one design receives a large single layout. Pages contain the brand, actual artwork, tattoo names/dimensions, page count, and Instagram handle. Full-resolution requests happen on details/export, not initial card loading.
