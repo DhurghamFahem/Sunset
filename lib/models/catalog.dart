@@ -4,6 +4,7 @@ typedef Json = Map<String, dynamic>;
 
 class TattooSize {
   const TattooSize(this.width, this.height);
+
   final double width, height;
   String get label => '${_number(width)} × ${_number(height)} سم';
   static String _number(double value) => value == value.roundToDouble()
