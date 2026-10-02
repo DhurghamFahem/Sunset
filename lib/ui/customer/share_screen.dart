@@ -21,13 +21,12 @@ class _ShareScreenState extends State<ShareScreen> {
   final preview = PageController();
   final downloaded = <int>{};
   int current = 0;
-  bool canShare = false, sharing = false, manual = false;
   bool get allDownloaded => downloaded.length == widget.pages.length;
 
   @override
   void initState() {
     super.initState();
-    canShare = service.prepare(widget.pages);
+    service.prepare(widget.pages);
   }
 
   @override
@@ -35,21 +34,6 @@ class _ShareScreenState extends State<ShareScreen> {
     preview.dispose();
     service.dispose();
     super.dispose();
-  }
-
-  Future<void> share() async {
-    // Invoke synchronously inside the tap to retain browser user activation.
-    final result = service.share();
-    setState(() => sharing = true);
-    final status = await result;
-    if (!mounted) return;
-    setState(() {
-      sharing = false;
-      if (status == 'failed' || status == 'unsupported') canShare = false;
-    });
-    if (!canShare) {
-      showNotice(context, 'احفظ الصور، وبعدين دزها إلنا على Instagram.');
-    }
   }
 
   void download() {
@@ -79,7 +63,6 @@ class _ShareScreenState extends State<ShareScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final saving = !canShare || manual;
     return Scaffold(
       appBar: AppBar(
         title: const Text('إرسال اختياراتك'),
@@ -109,9 +92,11 @@ class _ShareScreenState extends State<ShareScreen> {
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'دز الصور إلنا على Instagram ونكمل طلبك هناك.',
-                        style: TextStyle(color: muted),
+                      Text(
+                        widget.pages.length == 1
+                            ? 'جمعنالك اختياراتك بصورة وحدة. احفظها ودزها إلنا بالمحادثة.'
+                            : 'جمعنالك اختياراتك بـ ${widget.pages.length} صور. احفظها ودزها إلنا بالمحادثة.',
+                        style: const TextStyle(color: muted),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -159,12 +144,11 @@ class _ShareScreenState extends State<ShareScreen> {
                             ),
                           ],
                         ),
-                      if (saving)
-                        const Text(
-                          'إذا انفتحت الصورة بدل الحفظ، اضغط عليها مطولاً واحفظها.',
-                          style: TextStyle(color: muted, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
+                      const Text(
+                        'إذا انفتحت الصورة بدل الحفظ، اضغط عليها مطولاً واحفظها.',
+                        style: TextStyle(color: muted, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
                     ],
                   ),
                 ),
@@ -181,50 +165,34 @@ class _ShareScreenState extends State<ShareScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (saving) ...[
-                        Text(
+                      Text(
+                        allDownloaded
+                            ? 'تأكد إن الصور انحفظت، وبعدين أرفقها بالمحادثة ودزها إلنا.'
+                            : 'احفظ صور اختياراتك، وبعدين افتح محادثتنا على Instagram.',
+                        style: const TextStyle(fontSize: 13, color: muted),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        key: const ValueKey('share-next'),
+                        onPressed: allDownloaded ? openInstagram : download,
+                        icon: Icon(
                           allDownloaded
-                              ? 'بعد ما تتأكد إن الصور انحفظت، افتح محادثتنا وأرفقها بالرسالة.'
-                              : 'احفظ صور اختياراتك، وبعدين افتح محادثتنا على Instagram.',
-                          style: const TextStyle(fontSize: 13, color: muted),
+                              ? Icons.open_in_new
+                              : Icons.download_outlined,
                         ),
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          key: const ValueKey('share-next'),
-                          onPressed: allDownloaded ? openInstagram : download,
-                          icon: Icon(
-                            allDownloaded
-                                ? Icons.open_in_new
-                                : Icons.download_outlined,
-                          ),
-                          label: Text(
-                            allDownloaded
-                                ? 'فتح Instagram'
-                                : widget.pages.length == 1
-                                ? 'حفظ الصورة'
-                                : 'حفظ الصورة ${current + 1} / ${widget.pages.length}',
-                          ),
+                        label: Text(
+                          allDownloaded
+                              ? 'افتح محادثتنا على Instagram'
+                              : widget.pages.length == 1
+                              ? 'حفظ الصورة'
+                              : 'حفظ الصورة ${current + 1} / ${widget.pages.length}',
                         ),
-                        if (allDownloaded)
-                          TextButton(
-                            onPressed: download,
-                            child: const Text('حفظ الصورة مرة ثانية'),
-                          ),
-                      ] else ...[
-                        FilledButton.icon(
-                          onPressed: sharing ? null : share,
-                          icon: const Icon(Icons.ios_share),
-                          label: Text(
-                            sharing ? 'جاري المشاركة…' : 'مشاركة الصور',
-                          ),
-                        ),
+                      ),
+                      if (allDownloaded)
                         TextButton(
-                          onPressed: sharing
-                              ? null
-                              : () => setState(() => manual = true),
-                          child: const Text('حفظ الصور وفتح Instagram'),
+                          onPressed: download,
+                          child: const Text('حفظ الصورة مرة ثانية'),
                         ),
-                      ],
                     ],
                   ),
                 ),

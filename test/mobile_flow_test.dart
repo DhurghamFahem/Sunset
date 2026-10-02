@@ -439,7 +439,10 @@ void main() {
       expect(find.text('حفظ الصورة 2 / 2'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('share-next')));
       await tester.pumpAndSettle();
-      expect(find.text('فتح Instagram').hitTestable(), findsOneWidget);
+      expect(
+        find.text('افتح محادثتنا على Instagram').hitTestable(),
+        findsOneWidget,
+      );
       await screenshot(tester, capture, 'share');
       await tester.tap(find.text('تعديل'));
       await tester.pumpAndSettle();
