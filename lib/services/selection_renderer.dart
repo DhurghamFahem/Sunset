@@ -14,6 +14,9 @@ class SelectionRenderer {
     : _load = imageLoader ?? _download;
   final ImageLoader _load;
   static Future<Uint8List> _download(String url) async {
+    if (url.startsWith('data:image/')) {
+      return Uri.parse(url).data!.contentAsBytes();
+    }
     if (url.startsWith('asset:')) {
       final data = await rootBundle.load(url.substring('asset:'.length));
       return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);

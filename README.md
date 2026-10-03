@@ -15,11 +15,11 @@ A mobile-first Flutter Web catalog for Iraq. Customers browse, select designs on
 flutter pub get
 ```
 
-Test mode is enabled by default for now. Run `flutter run -d chrome` to browse 36 named temporary designs across four categories and six exact sizes, with search tags, bundled placeholder galleries, and no Supabase connection. Search, sorting, pagination, details, selections, and image export work locally. Admin sign-in and editing are disabled in this mode. The inventory resets with the app; test selections persist separately from real catalog selections.
+Test mode is enabled by default for now. Run `flutter run -d chrome` to browse 36 named temporary designs across four categories and six exact sizes, with search tags, bundled placeholder galleries, and no Supabase connection. Search, sorting, pagination, details, selections, and image export work locally. Open `/admin` and sign in with **test@gmail.com** / **1234** to test admin management, including category/product edits and image uploads. This demo account works only with `USE_TEST_DATA=true`; all changes and the login session stay local and reset when the app reloads. The inventory resets with the app; test selections persist separately from real catalog selections.
 
 Control the mode with `USE_TEST_DATA` in your configuration JSON or `--dart-define=USE_TEST_DATA=true` / `--dart-define=USE_TEST_DATA=false`. Restart/rebuild after changing it; hot reload does not apply compile-time flags. Test mode takes precedence even when Supabase credentials are supplied.
 
-To connect to real data, copy `config.example.json` to `config.local.json`, set `USE_TEST_DATA` to `false`, then provide your project URL and public anon/publishable key. Both values are public by design. **Never put a service-role/secret key, database password, or admin password in this file or any Flutter build.**
+To connect to real data, copy `config.example.json` to `config.local.json`, set `USE_TEST_DATA` to `false`, then provide your project URL and public anon/publishable key. Both values are public by design. **Never put a service-role/secret key, database password, or real admin password in this file or any Flutter build.**
 
 ```json
 {

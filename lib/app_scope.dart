@@ -15,7 +15,7 @@ class AppServices {
   final CatalogRepository catalog;
   final SelectionStore selection;
   final Analytics analytics;
-  final AdminService? admin;
+  final CatalogAdmin? admin;
 }
 
 class AppScope extends InheritedWidget {

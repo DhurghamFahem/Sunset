@@ -24,7 +24,7 @@ class _AdminScreenState extends State<AdminScreen> {
       search = TextEditingController();
   final form = GlobalKey<FormState>();
   StreamSubscription<dynamic>? authSubscription;
-  AdminService? admin;
+  CatalogAdmin? admin;
   bool initialized = false,
       checking = true,
       allowed = false,
@@ -229,9 +229,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   const SizedBox(height: 24),
                   if (admin == null)
                     const Text(
-                      AppConfig.useTestData
-                          ? 'وضع التجربة مفعّل. إدارة الكتالوج متاحة بعد إيقاف وضع التجربة وربط Supabase.'
-                          : 'أضف إعدادات Supabase عند تشغيل المشروع حتى تقدر تدير الكتالوج.',
+                      'أضف إعدادات Supabase عند تشغيل المشروع حتى تقدر تدير الكتالوج.',
                     ),
                   TextFormField(
                     controller: email,
@@ -287,6 +285,13 @@ class _AdminScreenState extends State<AdminScreen> {
       constraints: const BoxConstraints(maxWidth: 1100),
       child: Column(
         children: [
+          if (AppConfig.useTestData)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Text(
+                'وضع التجربة: التغييرات مؤقتة وتنحذف عند إعادة تحميل الصفحة.',
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(

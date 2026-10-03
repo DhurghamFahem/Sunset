@@ -18,7 +18,7 @@ class CatalogEditor extends StatefulWidget {
     this.product,
     this.category,
   });
-  final AdminService admin;
+  final CatalogAdmin admin;
   final List<Category> categories;
   final bool isCategory;
   final Tattoo? product;

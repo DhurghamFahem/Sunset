@@ -51,6 +51,12 @@ class CatalogImage extends StatelessWidget {
               fit: BoxFit.contain,
               semanticLabel: label,
             )
+          : url!.startsWith('data:image/')
+          ? Image.memory(
+              Uri.parse(url!).data!.contentAsBytes(),
+              fit: BoxFit.contain,
+              semanticLabel: label,
+            )
           : Image.network(
               url!,
               fit: BoxFit.contain,

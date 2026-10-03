@@ -1,14 +1,67 @@
 import '../config.dart';
 import '../models/catalog.dart';
 import '../models/catalog_search.dart';
+import '../services/admin_service.dart';
 import 'catalog_repository.dart';
 
 /// Temporary, local-only inventory; never reads or writes Supabase.
 class TestCatalogRepository implements CatalogRepository {
+  TestCatalogRepository()
+    : _categories = List.of(_seedCategories),
+      _products = List.of(_seedProducts);
+
+  final List<Category> _categories;
+  final List<Tattoo> _products;
+  int _nextId = 0;
+
+  bool _visible(Tattoo product) =>
+      product.active &&
+      product.categoryIds.any(
+        (id) => _categories.any((c) => c.id == id && c.active),
+      );
+
+  void save(String table, Json data, {String? id}) {
+    final recordId = id ?? 'test-created-${++_nextId}';
+    if (table == 'categories') {
+      final record = Category.fromJson({...data, 'id': recordId});
+      _categories.removeWhere((category) => category.id == recordId);
+      _categories.add(record);
+    } else if (table == 'products') {
+      final record = Tattoo.fromJson({...data, 'id': recordId});
+      if (_products.any((p) => p.id != recordId && p.code == record.code)) {
+        throw CatalogInputException('رقم التصميم مستخدم. اختار رقم ثاني.');
+      }
+      if (record.categoryIds.isEmpty ||
+          record.categoryIds.any(
+            (id) => !_categories.any((category) => category.id == id),
+          )) {
+        throw CatalogInputException('اختار تصنيف موجود.');
+      }
+      _products.removeWhere((product) => product.id == recordId);
+      _products.add(record);
+    } else {
+      throw ArgumentError('Invalid table');
+    }
+  }
+
+  void deleteCategory(String id) {
+    if (_products.any((product) => product.categoryIds.contains(id))) {
+      throw CatalogInputException(
+        'القسم بيه وشومات. انقلها لقسم ثاني قبل الحذف.',
+      );
+    }
+    _categories.removeWhere((category) => category.id == id);
+  }
+
   @override
   Future<List<String>> availableTags() async =>
-      _products.expand((product) => product.tags).toSet().toList()..sort();
-  static const _categories = [
+      _products
+          .where(_visible)
+          .expand((product) => product.tags)
+          .toSet()
+          .toList()
+        ..sort();
+  static const _seedCategories = [
     Category(
       id: 'test-flowers',
       name: 'ورود',
@@ -36,13 +89,13 @@ class TestCatalogRepository implements CatalogRepository {
 
   // More than one page, with varied prices, sizes, and badges for testing.
   // Increasing IDs represent increasing creation dates for newest sorting.
-  static final _products = List<Tattoo>.generate(36, (index) {
-    final category = _categories[index % _categories.length];
+  static final _seedProducts = List<Tattoo>.generate(36, (index) {
+    final category = _seedCategories[index % _seedCategories.length];
     final number = (index + 1).toString().padLeft(3, '0');
     return Tattoo(
       id: 'test-tattoo-$number',
       code: 'TEST-$number',
-      name: '${category.name} ${index ~/ _categories.length + 1}',
+      name: '${category.name} ${index ~/ _seedCategories.length + 1}',
       tags: switch (index % 4) {
         0 => ['زهرة', 'نبات', 'ناعم', 'floral'],
         1 => ['أوراق', 'طبيعة', 'غصن', 'botanical'],
@@ -51,7 +104,8 @@ class TestCatalogRepository implements CatalogRepository {
       },
       categoryIds: [
         category.id,
-        if (index % 3 == 0) _categories[(index + 1) % _categories.length].id,
+        if (index % 3 == 0)
+          _seedCategories[(index + 1) % _seedCategories.length].id,
       ],
       audiences: switch (index % 3) {
         0 => const [TattooAudience.men],
@@ -79,11 +133,17 @@ class TestCatalogRepository implements CatalogRepository {
 
   @override
   Future<List<Category>> categories({bool admin = false}) async =>
-      List.of(_categories);
+      _categories.where((c) => admin || c.active).toList()
+        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
   @override
   Future<List<TattooSize>> availableSizes() async =>
-      _products.map((product) => product.size!).toSet().toList()
+      _products
+          .where(_visible)
+          .map((product) => product.size)
+          .whereType<TattooSize>()
+          .toSet()
+          .toList()
         ..sort((a, b) => (a.width * a.height).compareTo(b.width * b.height));
 
   @override
@@ -97,7 +157,8 @@ class TestCatalogRepository implements CatalogRepository {
           if (query.admin) product.code,
         ].join(' '),
       );
-      return (query.categoryId == null ||
+      return (query.admin || _visible(product)) &&
+          (query.categoryId == null ||
               product.categoryIds.contains(query.categoryId)) &&
           (query.audience == null ||
               product.audiences.contains(query.audience)) &&
@@ -132,14 +193,17 @@ class TestCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<Tattoo?> product(String id) async =>
-      _products.where((product) => product.id == id).firstOrNull;
+  Future<Tattoo?> product(String id) async => _products
+      .where((product) => product.id == id && _visible(product))
+      .firstOrNull;
 
   @override
   Future<List<Tattoo>> selected(List<String> ids) async {
     final selectedIds = ids.toSet();
     return _products
-        .where((product) => selectedIds.contains(product.id))
+        .where(
+          (product) => selectedIds.contains(product.id) && _visible(product),
+        )
         .toList();
   }
 }

@@ -9,6 +9,7 @@ import 'config.dart';
 import 'repositories/catalog_repository.dart';
 import 'repositories/test_catalog_repository.dart';
 import 'services/admin_service.dart';
+import 'services/test_admin_service.dart';
 import 'services/analytics.dart';
 import 'state/selection_store.dart';
 
@@ -25,15 +26,20 @@ Future<void> main() async {
   }
   final analytics = NoopAnalytics();
   final preferences = await SharedPreferences.getInstance();
+  final testCatalog = AppConfig.useTestData ? TestCatalogRepository() : null;
   runApp(
     G2GApp(
       services: AppServices(
-        catalog: AppConfig.useTestData
-            ? TestCatalogRepository()
+        catalog:
+            testCatalog ??
+            (client == null
+                ? UnconfiguredCatalogRepository()
+                : SupabaseCatalogRepository(client)),
+        admin: testCatalog != null
+            ? TestAdminService(testCatalog)
             : client == null
-            ? UnconfiguredCatalogRepository()
-            : SupabaseCatalogRepository(client),
-        admin: client == null ? null : AdminService(client),
+            ? null
+            : AdminService(client),
         analytics: analytics,
         selection: SelectionStore(
           preferences,

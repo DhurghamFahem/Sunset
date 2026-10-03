@@ -7,6 +7,7 @@ import 'package:sunset/config.dart';
 import 'package:sunset/main.dart' as entry;
 import 'package:sunset/repositories/catalog_repository.dart';
 import 'package:sunset/repositories/test_catalog_repository.dart';
+import 'package:sunset/services/test_admin_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +25,7 @@ void main() {
     final app = tester.widget<G2GApp>(find.byType(G2GApp));
     if (AppConfig.useTestData) {
       expect(app.services.catalog, isA<TestCatalogRepository>());
-      expect(app.services.admin, isNull);
+      expect(app.services.admin, isA<TestAdminService>());
       expect(find.text('رجالي'), findsOneWidget);
       expect(find.text('نسائي'), findsOneWidget);
     } else if (!AppConfig.configured) {
