@@ -12,6 +12,7 @@ enum OrderStatus {
   cancelled('ملغي');
 
   const OrderStatus(this.label);
+
   final String label;
   bool get editable => [pending, confirmed, packed].contains(this);
   List<OrderStatus> get next => switch (this) {
