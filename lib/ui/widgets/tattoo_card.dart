@@ -22,6 +22,10 @@ class TattooCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: paper,
             borderRadius: BorderRadius.circular(20),
+          ),
+          // Painted above the content so the image can't cover the border.
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected ? forest : line,
               width: selected ? 1.7 : 1,
