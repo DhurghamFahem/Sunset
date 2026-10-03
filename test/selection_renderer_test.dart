@@ -35,7 +35,11 @@ void main() {
         return bytes;
       },
     );
-    final pages = await renderer.render(List.generate(7, (i) => fixture(i)));
+    final pages = await renderer.render(
+      List.generate(7, (i) => fixture(i)),
+      orderCode: 'A7K2',
+      quantities: {for (var i = 0; i < 7; i++) '$i': i + 1},
+    );
     expect(requests.length, 7);
     expect(pages.length, 2);
     final output = img.decodePng(pages.last)!;

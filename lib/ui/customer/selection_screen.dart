@@ -36,12 +36,23 @@ class _SelectionScreenState extends State<SelectionScreen> {
         return;
       }
       if (app.selection.count == 0) return;
+      final products = app.selection.items;
+      final quantities = app.selection.quantities;
+      final token = await app.selection.exportToken();
+      final order = await app.orders.create(token, quantities);
+      await app.selection.rememberOrder(order.id, token);
       final pages = await SelectionRenderer().render(
-        app.selection.items,
+        products,
+        orderCode: order.code,
+        quantities: {
+          for (final item in order.items) item.productId: item.quantity,
+        },
         onProgress: (value) {
           if (mounted) setState(() => progress = value);
         },
       );
+      if (!mounted) return;
+      await app.selection.finishExport();
       if (!mounted) return;
       app.analytics.event('selection_exported');
       await Navigator.of(context, rootNavigator: true).push(
@@ -82,7 +93,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
             .toList();
         final total = priced.fold<int>(
           0,
-          (sum, product) => sum + product.price!,
+          (sum, product) =>
+              sum + product.price! * selection.quantity(product.id),
         );
         return Center(
           child: ConstrainedBox(
@@ -194,6 +206,40 @@ class _SelectionScreenState extends State<SelectionScreen> {
                                         p.formattedPrice,
                                         style: const TextStyle(fontSize: 14),
                                       ),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          tooltip: 'تقليل الكمية',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed:
+                                              busy ||
+                                                  selection.quantity(p.id) <= 1
+                                              ? null
+                                              : () => selection.setQuantity(
+                                                  p.id,
+                                                  selection.quantity(p.id) - 1,
+                                                ),
+                                          icon: const Icon(
+                                            Icons.remove,
+                                            size: 18,
+                                          ),
+                                        ),
+                                        Text('${selection.quantity(p.id)}'),
+                                        IconButton(
+                                          tooltip: 'زيادة الكمية',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed:
+                                              busy ||
+                                                  selection.quantity(p.id) >= 99
+                                              ? null
+                                              : () => selection.setQuantity(
+                                                  p.id,
+                                                  selection.quantity(p.id) + 1,
+                                                ),
+                                          icon: const Icon(Icons.add, size: 18),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -202,6 +248,8 @@ class _SelectionScreenState extends State<SelectionScreen> {
                                 onPressed: busy
                                     ? null
                                     : () {
+                                        final removedQuantity = selection
+                                            .quantity(p.id);
                                         selection.toggle(p);
                                         ScaffoldMessenger.of(context)
                                             .hideCurrentSnackBar();
@@ -217,6 +265,10 @@ class _SelectionScreenState extends State<SelectionScreen> {
                                               onPressed: () {
                                                 if (!selection.contains(p.id)) {
                                                   selection.toggle(p);
+                                                  selection.setQuantity(
+                                                    p.id,
+                                                    removedQuantity,
+                                                  );
                                                 }
                                               },
                                             ),
@@ -252,7 +304,7 @@ class _SelectionScreenState extends State<SelectionScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${selection.count} وشم',
+                                  '${selection.pieces} قطعة',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                   ),

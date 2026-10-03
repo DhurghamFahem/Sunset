@@ -7,6 +7,7 @@ import 'app.dart';
 import 'app_scope.dart';
 import 'config.dart';
 import 'repositories/catalog_repository.dart';
+import 'repositories/order_repository.dart';
 import 'repositories/test_catalog_repository.dart';
 import 'services/admin_service.dart';
 import 'services/test_admin_service.dart';
@@ -41,6 +42,7 @@ Future<void> main() async {
             ? null
             : AdminService(client),
         analytics: analytics,
+        orders: client == null ? null : SupabaseOrderRepository(client),
         selection: SelectionStore(
           preferences,
           analytics,

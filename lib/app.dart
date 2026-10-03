@@ -9,6 +9,7 @@ import 'ui/customer/catalog_screen.dart';
 import 'ui/customer/categories_screen.dart';
 import 'ui/customer/detail_screen.dart';
 import 'ui/customer/selection_screen.dart';
+import 'ui/customer/orders_screen.dart';
 import 'ui/admin/admin_screen.dart';
 import 'ui/widgets/common.dart';
 
@@ -56,6 +57,19 @@ class _G2GAppState extends State<G2GApp> {
         ],
       ),
       GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
+      GoRoute(path: '/orders', builder: (_, _) => const CustomerOrdersScreen()),
+      GoRoute(
+        path: '/admin/orders',
+        builder: (_, _) => const AdminScreen(section: 'orders'),
+      ),
+      GoRoute(
+        path: '/admin/team',
+        builder: (_, _) => const AdminScreen(section: 'team'),
+      ),
+      GoRoute(
+        path: '/admin/settings',
+        builder: (_, _) => const AdminScreen(section: 'settings'),
+      ),
       GoRoute(
         path: '/admin/categories',
         builder: (_, _) => const AdminScreen(section: 'categories'),

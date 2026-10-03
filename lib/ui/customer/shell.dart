@@ -46,6 +46,11 @@ class CustomerShell extends StatelessWidget {
             ),
           ),
           actions: [
+            IconButton(
+              tooltip: 'طلباتي',
+              onPressed: () => context.push('/orders'),
+              icon: const Icon(Icons.receipt_long_outlined, size: 21),
+            ),
             if (MediaQuery.sizeOf(context).width >= 600)
               TextButton(
                 onPressed: () => context.go('/'),
@@ -69,7 +74,9 @@ class CustomerShell extends StatelessWidget {
                     label: Text('${selection.count}'),
                     child: const Icon(Icons.favorite_border, size: 21),
                   ),
-                  label: const Text('اختياراتي'),
+                  label: Text(
+                    MediaQuery.sizeOf(context).width < 400 ? '' : 'اختياراتي',
+                  ),
                 ),
               ),
           ],

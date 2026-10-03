@@ -10,6 +10,7 @@ import '../../services/admin_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import 'catalog_editor.dart';
+import 'order_management.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key, this.section = 'products'});
@@ -94,6 +95,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> load({bool next = false}) async {
+    if (!['products', 'categories'].contains(widget.section)) return;
     if (next && loading) return;
     final token = ++generation;
     if (!next) offset = 0;
@@ -164,7 +166,7 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Brand(),
           SizedBox(width: 14),
-          Text('إدارة الكتالوج', style: TextStyle(fontSize: 18)),
+          Text('إدارة G2G', style: TextStyle(fontSize: 18)),
         ],
       ),
       actions: [
@@ -285,210 +287,237 @@ class _AdminScreenState extends State<AdminScreen> {
       constraints: const BoxConstraints(maxWidth: 1100),
       child: Column(
         children: [
-          if (AppConfig.useTestData)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Text(
-                'وضع التجربة: التغييرات مؤقتة وتنحذف عند إعادة تحميل الصفحة.',
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'G2G / STUDIO',
-                        style: TextStyle(
-                          color: clay,
-                          fontSize: 10,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      Text(
-                        isCategories ? 'مجموعاتك' : 'مساحة التصاميم',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sage,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isCategories
-                        ? '${categories.length} تصنيف'
-                        : '${products.length}${more ? '+' : ''} تصميم',
-                    style: const TextStyle(color: forest, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'products', label: Text('المنتجات')),
-                      ButtonSegment(
-                        value: 'categories',
-                        label: Text('التصنيفات'),
-                      ),
-                    ],
-                    selected: {widget.section},
-                    onSelectionChanged: (v) => context.go('/admin/${v.first}'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton.filled(
-                  tooltip: isCategories ? 'إضافة تصنيف' : 'إضافة وشم',
-                  onPressed: () => edit(),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-          ),
-          if (!isCategories)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: search,
-                decoration: const InputDecoration(
-                  hintText: 'ابحث عن وشم أو رقم التصميم',
-                  prefixIcon: Icon(Icons.search),
-                ),
-                onChanged: (_) {
-                  debounce?.cancel();
-                  debounce = Timer(const Duration(milliseconds: 300), load);
-                },
-              ),
-            ),
-          if (loading) const LinearProgressIndicator(),
-          if (error != null)
-            Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  Expanded(child: Text(error!)),
-                  TextButton(
-                    onPressed: load,
-                    child: const Text('إعادة المحاولة'),
+                  for (final entry in const {
+                    'products': 'المنتجات',
+                    'categories': 'التصنيفات',
+                    'orders': 'الطلبات',
+                    'team': 'الموظفون',
+                    'settings': 'التوصيل',
+                  }.entries)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(entry.value),
+                        selected: widget.section == entry.key,
+                        onSelected: (_) => context.go('/admin/${entry.key}'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (!['products', 'categories'].contains(widget.section))
+            Expanded(
+              child: OrderManagement(
+                key: ValueKey(widget.section),
+                section: widget.section,
+              ),
+            )
+          else ...[
+            if (AppConfig.useTestData)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Text(
+                  'وضع التجربة: التغييرات مؤقتة وتنحذف عند إعادة تحميل الصفحة.',
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'G2G / STUDIO',
+                          style: TextStyle(
+                            color: clay,
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        Text(
+                          isCategories ? 'مجموعاتك' : 'مساحة التصاميم',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: sage,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isCategories
+                          ? '${categories.length} تصنيف'
+                          : '${products.length}${more ? '+' : ''} تصميم',
+                      style: const TextStyle(color: forest, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
             ),
-          Expanded(
-            child: isCategories
-                ? ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: categories.length,
-                    itemBuilder: (context, i) {
-                      final c = categories[i];
-                      return Card(
-                        color: Colors.white,
-                        child: ListTile(
-                          leading: SizedBox(
-                            width: 54,
-                            height: 54,
-                            child: CatalogImage(c.imageUrl, padding: 2),
-                          ),
-                          title: Text(c.name),
-                          subtitle: Text(
-                            '${c.active ? 'ظاهر' : 'مخفي'} • الترتيب ${c.sortOrder}',
-                          ),
-                          onTap: () => edit(category: c),
-                          trailing: IconButton(
-                            tooltip: 'حذف القسم',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () async {
-                              if (!await confirm(
-                                context,
-                                'حذف القسم؟',
-                                'تقدر تحذفه فقط إذا ما بيه وشومات.',
-                              )) {
-                                return;
-                              }
-                              try {
-                                await admin!.deleteCategory(c.id);
-                                await load();
-                              } catch (e) {
-                                if (context.mounted) {
-                                  showNotice(
-                                    context,
-                                    e is CatalogInputException
-                                        ? e.message
-                                        : 'تعذر الحذف',
-                                  );
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: isCategories ? 'إضافة تصنيف' : 'إضافة وشم',
+                      child: FilledButton.icon(
+                        onPressed: () => edit(),
+                        icon: const Icon(Icons.add),
+                        label: Text(isCategories ? 'إضافة تصنيف' : 'إضافة وشم'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!isCategories)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: search,
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث عن وشم أو رقم التصميم',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (_) {
+                    debounce?.cancel();
+                    debounce = Timer(const Duration(milliseconds: 300), load);
+                  },
+                ),
+              ),
+            if (loading) const LinearProgressIndicator(),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(error!)),
+                    TextButton(
+                      onPressed: load,
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: isCategories
+                  ? ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: categories.length,
+                      itemBuilder: (context, i) {
+                        final c = categories[i];
+                        return Card(
+                          color: Colors.white,
+                          child: ListTile(
+                            leading: SizedBox(
+                              width: 54,
+                              height: 54,
+                              child: CatalogImage(c.imageUrl, padding: 2),
+                            ),
+                            title: Text(c.name),
+                            subtitle: Text(
+                              '${c.active ? 'ظاهر' : 'مخفي'} • الترتيب ${c.sortOrder}',
+                            ),
+                            onTap: () => edit(category: c),
+                            trailing: IconButton(
+                              tooltip: 'حذف القسم',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                if (!await confirm(
+                                  context,
+                                  'حذف القسم؟',
+                                  'تقدر تحذفه فقط إذا ما بيه وشومات.',
+                                )) {
+                                  return;
                                 }
-                              }
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: products.length + 1,
-                    itemBuilder: (context, i) {
-                      if (i == products.length) {
-                        if (more) {
-                          return OutlinedButton(
-                            onPressed: loading ? null : () => load(next: true),
-                            child: const Text('عرض المزيد'),
-                          );
-                        }
-                        if (products.isEmpty && !loading && error == null) {
-                          return const MessagePanel(
-                            title: 'أضف أول وشم للكتالوج',
-                          );
-                        }
-                        return const SizedBox(height: 24);
-                      }
-                      final p = products[i];
-                      return Card(
-                        color: Colors.white,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(10),
-                          leading: SizedBox(
-                            width: 66,
-                            height: 66,
-                            child: CatalogImage(p.thumbnail, padding: 3),
-                          ),
-                          title: Text(
-                            p.displayName,
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
+                                try {
+                                  await admin!.deleteCategory(c.id);
+                                  await load();
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    showNotice(
+                                      context,
+                                      e is CatalogInputException
+                                          ? e.message
+                                          : 'تعذر الحذف',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
-                          subtitle: Text(
-                            [
-                              p.code,
-                              p.active ? 'ظاهر' : 'مخفي',
-                              p.formattedPrice,
-                            ].where((v) => v.isNotEmpty).join(' • '),
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: products.length + 1,
+                      itemBuilder: (context, i) {
+                        if (i == products.length) {
+                          if (more) {
+                            return OutlinedButton(
+                              onPressed: loading
+                                  ? null
+                                  : () => load(next: true),
+                              child: const Text('عرض المزيد'),
+                            );
+                          }
+                          if (products.isEmpty && !loading && error == null) {
+                            return const MessagePanel(
+                              title: 'أضف أول وشم للكتالوج',
+                            );
+                          }
+                          return const SizedBox(height: 24);
+                        }
+                        final p = products[i];
+                        return Card(
+                          color: Colors.white,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(10),
+                            leading: SizedBox(
+                              width: 66,
+                              height: 66,
+                              child: CatalogImage(p.thumbnail, padding: 3),
+                            ),
+                            title: Text(
+                              p.displayName,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              [
+                                p.code,
+                                p.active ? 'ظاهر' : 'مخفي',
+                                p.formattedPrice,
+                              ].where((v) => v.isNotEmpty).join(' • '),
+                            ),
+                            trailing: const Icon(Icons.edit_outlined),
+                            onTap: () => edit(product: p),
                           ),
-                          trailing: const Icon(Icons.edit_outlined),
-                          onTap: () => edit(product: p),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ],
       ),
     ),

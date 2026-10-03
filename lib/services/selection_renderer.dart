@@ -41,6 +41,8 @@ class SelectionRenderer {
   Future<List<Uint8List>> render(
     List<Tattoo> products, {
     ValueChanged<double>? onProgress,
+    String? orderCode,
+    Map<String, int> quantities = const {},
   }) async {
     final batches = pages(products);
     final output = <Uint8List>[];
@@ -76,7 +78,7 @@ class SelectionRenderer {
       );
       _text(
         canvas,
-        '${page + 1} / ${batches.length}',
+        '${orderCode == null ? '' : 'ORDER $orderCode    •    '}${page + 1} / ${batches.length}',
         const Rect.fromLTWH(60, 213, 1080, 55),
         size: 24,
         latin: true,
@@ -112,13 +114,18 @@ class SelectionRenderer {
           size: 29,
           bold: true,
         );
-        if (product.dimensions.isNotEmpty) {
+        if (product.dimensions.isNotEmpty ||
+            quantities.containsKey(product.id)) {
           _text(
             canvas,
-            product.dimensions,
+            [
+              if (quantities.containsKey(product.id))
+                'الكمية: ${quantities[product.id]}',
+              if (product.dimensions.isNotEmpty) product.dimensions,
+            ].join(' • '),
             Rect.fromLTWH(x + 12, y + cellHeight - 67, cellWidth - 24, 40),
             size: 25,
-            latin: true,
+            latin: !quantities.containsKey(product.id),
           );
         }
         onProgress?.call(++done / products.length);
