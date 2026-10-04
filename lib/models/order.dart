@@ -47,17 +47,19 @@ class OrderItem {
   const OrderItem({
     required this.productId,
     required this.name,
+    this.code = '',
     required this.quantity,
     required this.originalPrice,
     required this.unitPrice,
     this.acceptedQuantity = 0,
   });
-  final String productId, name;
+  final String productId, name, code;
   final int quantity, acceptedQuantity;
   final int? originalPrice, unitPrice;
   factory OrderItem.fromJson(Json j) => OrderItem(
     productId: j['product_id'],
     name: j['name'],
+    code: j['code'] ?? '',
     quantity: j['quantity'],
     originalPrice: j['original_price'],
     unitPrice: j['unit_price'],
@@ -66,6 +68,7 @@ class OrderItem {
   Json toJson() => {
     'product_id': productId,
     'name': name,
+    'code': code,
     'quantity': quantity,
     'original_price': originalPrice,
     'unit_price': unitPrice,
@@ -88,7 +91,7 @@ class TattooOrder {
     this.area = '',
     this.customerName = '',
     this.username = '',
-    this.source = OrderSource.website,
+    this.source = OrderSource.instagram,
     this.employeeId,
   });
   final String id, code, phone, governorate, area, customerName, username;
@@ -142,7 +145,7 @@ class TattooOrder {
     area: j['area'] ?? '',
     customerName: j['customer_name'] ?? '',
     username: j['username'] ?? '',
-    source: OrderSource.values.byName(j['source'] ?? 'website'),
+    source: OrderSource.values.byName(j['source'] ?? 'instagram'),
     employeeId: j['employee_id'],
   );
   Json toJson() => {
@@ -181,9 +184,9 @@ class TattooOrder {
     'قيمة الوشومات الأصلية: ${AppConfig.money(originalSubtotal)}',
     'التوصيل: ${AppConfig.money(deliveryCost)}',
     'المجموع قبل الخصم: ${AppConfig.money(originalTotal)}',
-    'خصم القطع: ${AppConfig.money(itemDiscount)}',
-    'خصم إضافي: ${AppConfig.money(extraDiscount)}',
-    'إجمالي الخصم: ${AppConfig.money(discount)}',
+    if (itemDiscount != 0) 'خصم القطع: ${AppConfig.money(itemDiscount)}',
+    if (extraDiscount != 0) 'خصم إضافي: ${AppConfig.money(extraDiscount)}',
+    if (discount != 0) 'إجمالي الخصم: ${AppConfig.money(discount)}',
     'المبلغ النهائي: ${AppConfig.money(total)}',
     '',
     'شكراً لاختيارك G2G 💚',

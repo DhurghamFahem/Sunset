@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sunset/models/catalog.dart';
 import 'package:sunset/services/selection_renderer.dart';
 import 'package:sunset/ui/theme.dart';
+import 'package:sunset/ui/widgets/common.dart';
 import 'package:sunset/ui/widgets/tattoo_gallery.dart';
 
 void main() {
@@ -93,6 +94,45 @@ void main() {
             .onPressed,
         isNull,
       );
+      await tester.tap(find.byTooltip('عرض بملء الشاشة'));
+      await tester.pumpAndSettle();
+      final viewer = find.byKey(const ValueKey('tattoo-fullscreen-viewer'));
+      expect(viewer, findsOneWidget);
+      expect(tester.getSize(viewer), Size(width, 900));
+      final photo = find.descendant(
+        of: viewer,
+        matching: find.byType(CatalogImage),
+      );
+      expect(tester.widget<CatalogImage>(photo).url, alternate);
+      expect(Directionality.of(tester.element(photo)), TextDirection.rtl);
+      final zoom = tester.widget<InteractiveViewer>(
+        find.descendant(of: viewer, matching: find.byType(InteractiveViewer)),
+      );
+      // Pinching the full-screen photo must enable panning without closing it.
+      final center = tester.getCenter(photo);
+      final first = await tester.startGesture(center - const Offset(20, 0));
+      final second = await tester.startGesture(
+        center + const Offset(20, 0),
+        pointer: 2,
+      );
+      await first.moveTo(center - const Offset(80, 0));
+      await second.moveTo(center + const Offset(80, 0));
+      await tester.pump();
+      expect(
+        zoom.transformationController!.value.getMaxScaleOnAxis(),
+        greaterThan(1),
+      );
+      await first.up();
+      await second.up();
+      await tester.tap(find.byTooltip('إغلاق عرض الصورة'));
+      await tester.pumpAndSettle();
+      expect(viewer, findsNothing);
+      expect(find.text('2 / 2'), findsOneWidget);
+      await tester.tap(find.byTooltip('عرض بملء الشاشة'));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(viewer, findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });
@@ -115,6 +155,21 @@ void main() {
     expect(find.byType(InteractiveViewer), findsOneWidget);
     expect(find.byTooltip('الصورة التالية'), findsNothing);
     expect(find.byKey(const ValueKey('gallery-thumbnail-0')), findsNothing);
+    await tester.tap(find.byType(InteractiveViewer));
+    await tester.pumpAndSettle();
+    final viewer = find.byKey(const ValueKey('tattoo-fullscreen-viewer'));
+    expect(viewer, findsOneWidget);
+    expect(
+      tester
+          .widget<CatalogImage>(
+            find.descendant(of: viewer, matching: find.byType(CatalogImage)),
+          )
+          .url,
+      cover,
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(viewer, findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

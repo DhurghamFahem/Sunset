@@ -167,6 +167,7 @@ class MemoryOrderRepository implements OrderRepository {
             (p) => OrderItem(
               productId: p.id,
               name: p.displayName,
+              code: p.code,
               quantity: quantities[p.id]!,
               originalPrice: p.price,
               unitPrice: p.price,
@@ -254,6 +255,7 @@ class MemoryOrderRepository implements OrderRepository {
       final i = next.items[n], before = old.items[n];
       if (i.productId != before.productId ||
           i.name != before.name ||
+          i.code != before.code ||
           (before.originalPrice != null &&
               i.originalPrice != before.originalPrice) ||
           i.quantity < 1 ||

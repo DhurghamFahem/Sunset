@@ -110,6 +110,7 @@ void main() {
       RepaintBoundary(child: wrap(app, OrderScreen(order: order))),
     );
     await tester.pumpAndSettle();
+    expect(find.text('رمز الوشم: ${fixture(1).code}'), findsOneWidget);
     await capture(tester, 'order-employee');
     Future<void> fill(String label, String text) async {
       final field = find.widgetWithText(TextFormField, label);
@@ -124,6 +125,11 @@ void main() {
     await fill('رقم الهاتف *', '07701234567');
     await fill('المحافظة *', 'بغداد');
     await fill('المنطقة والعنوان التفصيلي *', 'المنصور');
+    final source = find.byType(DropdownButtonFormField<OrderSource>);
+    expect(
+      tester.widget<DropdownButtonFormField<OrderSource>>(source).initialValue,
+      OrderSource.instagram,
+    );
     final confirm = find.text('تأكيد الطلب ونسخ الرسالة');
     await tester.scrollUntilVisible(
       confirm,
@@ -142,6 +148,11 @@ void main() {
     );
     expect(copied, contains(order.code));
     expect(copied, contains('10,000'));
+    expect(copied, isNot(contains('خصم القطع:')));
+    expect(copied, isNot(contains('خصم إضافي:')));
+    expect(copied, isNot(contains('إجمالي الخصم:')));
+    expect((await app.orders.get(order.id)).source, OrderSource.instagram);
+    expect((await app.orders.get(order.id)).items.single.code, fixture(1).code);
     expect(tester.takeException(), isNull);
   });
   testWidgets(

@@ -45,6 +45,58 @@ class _TattooGalleryState extends State<TattooGallery> {
     }
   }
 
+  void openFullScreen() {
+    if (widget.images.isEmpty) return;
+    final image = widget.images[current];
+    final label = '${widget.label} — صورة ${current + 1}';
+    final textDirection = Directionality.of(context);
+    showDialog<void>(
+      context: context,
+      useSafeArea: false,
+      builder: (context) => Directionality(
+        textDirection: textDirection,
+        child: Dialog.fullscreen(
+          key: const ValueKey('tattoo-fullscreen-viewer'),
+          backgroundColor: paper,
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'إغلاق عرض الصورة',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _GalleryPhoto(
+                    image: image,
+                    label: label,
+                    padding: 0,
+                    onZoomChanged: (_) {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -55,22 +107,44 @@ class _TattooGalleryState extends State<TattooGallery> {
               (MediaQuery.sizeOf(context).height *
                       (MediaQuery.sizeOf(context).width < 800 ? .40 : .52))
                   .clamp(240.0, 620.0),
-          child: PageView.builder(
-            controller: pages,
-            physics: zoomed ? const NeverScrollableScrollPhysics() : null,
-            onPageChanged: pageChanged,
-            itemCount: widget.images.length,
-            itemBuilder: (_, index) => _GalleryPhoto(
-              // Reset zoom when switching images, including via thumbnails.
-              key: ValueKey('$current-$index'),
-              image: widget.images[index],
-              label: '${widget.label} — صورة ${index + 1}',
-              onZoomChanged: (value) {
-                if (index == current && zoomed != value) {
-                  setState(() => zoomed = value);
-                }
-              },
-            ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              GestureDetector(
+                onTap: widget.images.isEmpty ? null : openFullScreen,
+                child: PageView.builder(
+                  controller: pages,
+                  physics: zoomed ? const NeverScrollableScrollPhysics() : null,
+                  onPageChanged: pageChanged,
+                  itemCount: widget.images.length,
+                  itemBuilder: (_, index) => _GalleryPhoto(
+                    // Reset zoom when switching images, including via thumbnails.
+                    key: ValueKey('$current-$index'),
+                    image: widget.images[index],
+                    label: '${widget.label} — صورة ${index + 1}',
+                    onZoomChanged: (value) {
+                      if (index == current && zoomed != value) {
+                        setState(() => zoomed = value);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              if (widget.images.isNotEmpty)
+                PositionedDirectional(
+                  top: 12,
+                  end: 12,
+                  child: IconButton.filledTonal(
+                    tooltip: 'عرض بملء الشاشة',
+                    onPressed: openFullScreen,
+                    style: IconButton.styleFrom(
+                      backgroundColor: paper,
+                      foregroundColor: ink,
+                    ),
+                    icon: const Icon(Icons.fullscreen),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -140,8 +214,8 @@ class _TattooGalleryState extends State<TattooGallery> {
       const SizedBox(height: 12),
       Text(
         widget.images.length > 1
-            ? 'اسحب بين الصور أو اختار صورة مصغرة • كبّر حتى تشوف التفاصيل'
-            : 'كبّر الصورة حتى تشوف التفاصيل',
+            ? 'اسحب بين الصور أو اختار صورة مصغرة • اضغط على الصورة لعرضها بملء الشاشة'
+            : 'اضغط على الصورة لعرضها بملء الشاشة • كبّر حتى تشوف التفاصيل',
         style: const TextStyle(color: muted, fontSize: 12),
         textAlign: TextAlign.center,
       ),
@@ -155,10 +229,12 @@ class _GalleryPhoto extends StatefulWidget {
     required this.image,
     required this.label,
     required this.onZoomChanged,
+    this.padding = 24,
   });
   final TattooImage image;
   final String label;
   final ValueChanged<bool> onZoomChanged;
+  final double padding;
   @override
   State<_GalleryPhoto> createState() => _GalleryPhotoState();
 }
@@ -186,7 +262,11 @@ class _GalleryPhotoState extends State<_GalleryPhoto> {
       }
     },
     child: SizedBox.expand(
-      child: CatalogImage(widget.image.url, label: widget.label, padding: 24),
+      child: CatalogImage(
+        widget.image.url,
+        label: widget.label,
+        padding: widget.padding,
+      ),
     ),
   );
 }

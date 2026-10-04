@@ -30,6 +30,8 @@ void main() {
     expect(results.map((o) => o.id).toSet().length, 1);
     expect(results.first.code, matches(RegExp(r'^[A-Z0-9]{4}$')));
     expect(results.first.total, 20000);
+    expect(results.first.source, OrderSource.instagram);
+    expect(results.first.items.single.code, fixture(1).code);
     await repo.setDeliveryCost(3000);
     expect((await repo.get(results.first.id)).deliveryCost, 5000);
     final next = await repo.create(newOrderToken(), {'1': 1});
@@ -110,6 +112,33 @@ void main() {
       expect(priced.discount, 500);
     },
   );
+  for (final itemDiscount in [false, true]) {
+    for (final extraDiscount in [false, true]) {
+      test(
+        'message discounts: items=$itemDiscount extra=$extraDiscount',
+        () async {
+          final order = await repo.create(newOrderToken(), {'1': 2});
+          final unitPrice = itemDiscount ? 4000 : 5000;
+          final saved = await repo.save(order, {
+            ...details,
+            'source': 'website',
+            'items': [
+              {...order.items.single.toJson(), 'unit_price': unitPrice},
+            ],
+            'final_total': unitPrice * 2 - (extraDiscount ? 1000 : 0),
+          });
+          expect(saved.bookingMessage.contains('خصم القطع:'), itemDiscount);
+          expect(saved.bookingMessage.contains('خصم إضافي:'), extraDiscount);
+          expect(
+            saved.bookingMessage.contains('إجمالي الخصم:'),
+            itemDiscount || extraDiscount,
+          );
+          expect(saved.items.single.code, fixture(1).code);
+          expect(saved.source, OrderSource.website);
+        },
+      );
+    }
+  }
   test(
     'discount math, quantity edits, immutable original, stale writes',
     () async {

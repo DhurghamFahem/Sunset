@@ -277,6 +277,8 @@ class _OrderScreenState extends State<OrderScreen> {
                             order.items[n].name,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
+                          if (staff && order.items[n].code.isNotEmpty)
+                            Text('رمز الوشم: ${order.items[n].code}'),
                           const SizedBox(height: 12),
                           if (staff && order.status.editable) ...[
                             field(

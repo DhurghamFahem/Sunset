@@ -17,6 +17,8 @@ declare o jsonb; same jsonb; bad jsonb; denied boolean; token uuid := '40000000-
 begin
   o := public.create_selection_order(token, '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":3}]');
   if o->>'code' !~ '^[A-Z0-9]{4}$' or o ? 'access_token' then raise exception 'Invalid public order result'; end if;
+  if o->>'source' is distinct from 'instagram' then raise exception 'Incorrect default order source'; end if;
+  if o->'items'->0->>'code' is distinct from '99993' then raise exception 'Missing tattoo code'; end if;
   same := public.create_selection_order(token, '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":3}]');
   if same->>'id' <> o->>'id' then raise exception 'Retry created another order'; end if;
   denied := false;
@@ -45,6 +47,7 @@ begin
   o := public.create_selection_order('40000000-0000-4000-8000-000000000093', '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":3}]');
   o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07701234567","governorate":"Baghdad","area":"Mansour"}');
   if o->>'status' <> 'confirmed' then raise exception 'Employee booking failed'; end if;
+  if o->'items'->0->>'code' is distinct from '99993' then raise exception 'Tattoo code lost after confirmation'; end if;
   items := jsonb_set(o->'items', '{0,unit_price}', '4000');
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer,
     jsonb_build_object('items', items, 'final_total', 14000, 'employee_id', '30000000-0000-4000-8000-000000000093'));
