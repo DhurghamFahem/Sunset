@@ -89,7 +89,7 @@ class CustomerShell extends StatelessWidget {
               if (selection.persistenceWarning)
                 Container(
                   width: double.infinity,
-                  color: const Color(0xFFFFEDCB),
+                  color: const Color(0xFFF8DCC8),
                   padding: const EdgeInsets.all(8),
                   child: const Text(
                     'خلي الصفحة مفتوحة لحد ما تحفظ صور اختياراتك.',

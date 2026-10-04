@@ -298,7 +298,7 @@ class _CatalogIntro extends StatelessWidget {
     width: double.infinity,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      color: forest,
+      color: ink,
       borderRadius: BorderRadius.circular(24),
     ),
     child: Stack(
@@ -321,7 +321,7 @@ class _CatalogIntro extends StatelessWidget {
                   'G2G  /  HERBAL TATTOOS',
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    color: Color(0xFFCEDBC6),
+                    color: Color(0xFF8DB36F),
                     fontSize: 10,
                     letterSpacing: 1.6,
                   ),
@@ -330,6 +330,7 @@ class _CatalogIntro extends StatelessWidget {
                 Text(
                   title ?? 'تفاصيل صغيرة، تشبهك.',
                   style: TextStyle(
+                    fontFamily: displayFont,
                     color: paper,
                     fontSize: wide ? 34 : 22,
                     height: 1.5,
@@ -340,7 +341,7 @@ class _CatalogIntro extends StatelessWidget {
                 Text(
                   'اختار وشمك، وخلي الباقي علينا.',
                   style: TextStyle(
-                    color: const Color(0xFFDEE6D7),
+                    color: const Color(0xFFE8E0CF),
                     fontSize: wide ? 14 : 11,
                   ),
                 ),

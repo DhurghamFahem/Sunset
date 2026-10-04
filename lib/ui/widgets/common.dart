@@ -12,7 +12,7 @@ class Brand extends StatelessWidget {
           AppConfig.brand,
           textDirection: TextDirection.ltr,
           style: TextStyle(
-            fontFamily: 'serif',
+            fontFamily: displayFont,
             fontWeight: FontWeight.w800,
             fontSize: size,
             letterSpacing: -1.8,
@@ -38,7 +38,7 @@ class CatalogImage extends StatelessWidget {
   final double padding;
   @override
   Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xFFF0F1E9),
+    color: const Color(0xFFEFE7D6),
     child: Padding(
       padding: EdgeInsets.all(padding),
       child: url == null || url!.isEmpty
@@ -78,7 +78,7 @@ class SkeletonBox extends StatelessWidget {
     label: 'جاري التحميل',
     child: Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFEAECE5),
+        color: const Color(0xFFEAE1CE),
         borderRadius: BorderRadius.circular(12),
       ),
     ),
@@ -280,12 +280,12 @@ class _BotanicalPainter extends CustomPainter {
     canvas.save();
     canvas.scale(size.width / 200, size.height / 200);
     final stroke = Paint()
-      ..color = const Color(0xFF829D81)
+      ..color = const Color(0xFF4F7A3A)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     canvas.drawOval(
       const Rect.fromLTWH(18, 8, 156, 180),
-      Paint()..color = const Color(0xFF365B48),
+      Paint()..color = const Color(0xFF222222),
     );
     canvas.drawPath(
       Path()
@@ -310,7 +310,7 @@ class _BotanicalPainter extends CustomPainter {
     canvas.drawCircle(
       const Offset(161, 31),
       3,
-      Paint()..color = const Color(0xFFB9C6A3),
+      Paint()..color = const Color(0xFFD96B30),
     );
     canvas.restore();
   }

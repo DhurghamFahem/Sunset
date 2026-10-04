@@ -166,7 +166,13 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Brand(),
           SizedBox(width: 14),
-          Text('إدارة G2G', style: TextStyle(fontSize: 18)),
+          Flexible(
+            child: Text(
+              'إدارة G2G',
+              style: TextStyle(fontSize: 18),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
       actions: [
@@ -423,7 +429,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       itemBuilder: (context, i) {
                         final c = categories[i];
                         return Card(
-                          color: Colors.white,
+                          color: paper,
                           child: ListTile(
                             leading: SizedBox(
                               width: 54,
@@ -487,7 +493,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         }
                         final p = products[i];
                         return Card(
-                          color: Colors.white,
+                          color: paper,
                           child: ListTile(
                             contentPadding: const EdgeInsets.all(10),
                             leading: SizedBox(

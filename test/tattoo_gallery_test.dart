@@ -18,8 +18,8 @@ void main() {
   );
   setUpAll(() async {
     await (FontLoader(
-      'NotoArabic',
-    )..addFont(rootBundle.load('assets/fonts/NotoSansArabic.ttf'))).load();
+      'Tajawal',
+    )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
   });
 
   test(

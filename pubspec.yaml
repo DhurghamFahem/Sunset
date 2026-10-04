@@ -71,9 +71,23 @@ flutter:
   assets:
     - assets/test_catalog/
   fonts:
-    - family: NotoArabic
+    - family: Tajawal
       fonts:
-        - asset: assets/fonts/NotoSansArabic.ttf
+        - asset: assets/fonts/Tajawal-Regular.ttf
+        - asset: assets/fonts/Tajawal-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Tajawal-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Tajawal-ExtraBold.ttf
+          weight: 800
+    - family: ElMessiri
+      fonts:
+        - asset: assets/fonts/ElMessiri-500.ttf
+          weight: 500
+        - asset: assets/fonts/ElMessiri-600.ttf
+          weight: 600
+        - asset: assets/fonts/ElMessiri-700.ttf
+          weight: 700
     - family: G2GSymbols
       fonts:
         - asset: assets/fonts/G2GSymbols.ttf

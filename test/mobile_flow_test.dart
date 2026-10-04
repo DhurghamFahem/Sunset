@@ -36,8 +36,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
     await (FontLoader(
-      'NotoArabic',
-    )..addFont(rootBundle.load('assets/fonts/NotoSansArabic.ttf'))).load();
+      'Tajawal',
+    )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
     await (FontLoader(
       'G2GSymbols',
     )..addFont(rootBundle.load('assets/fonts/G2GSymbols.ttf'))).load();
@@ -46,7 +46,7 @@ void main() {
     )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
     await (FontLoader(
       'serif',
-    )..addFont(rootBundle.load('assets/fonts/NotoSansArabic.ttf'))).load();
+    )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
   });
   void viewport(WidgetTester tester, double width, [double height = 900]) {
     tester.view.physicalSize = Size(width, height);

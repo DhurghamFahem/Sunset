@@ -22,8 +22,8 @@ void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
     await (FontLoader(
-      'NotoArabic',
-    )..addFont(rootBundle.load('assets/fonts/NotoSansArabic.ttf'))).load();
+      'Tajawal',
+    )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
     await (FontLoader(
       'MaterialIcons',
     )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();

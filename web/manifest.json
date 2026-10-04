@@ -3,10 +3,15 @@
   "short_name": "G2G",
   "start_url": "./",
   "display": "browser",
-  "background_color": "#faf8f3",
-  "theme_color": "#2d493d",
+  "background_color": "#F5EFE2",
+  "theme_color": "#F5EFE2",
   "lang": "ar",
   "dir": "rtl",
   "description": "تصفح، اختار، ودز اختياراتك إلنا على Instagram",
-  "icons": [{"src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+  "icons": [
+    {"src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/Icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/Icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "icons/Icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
 }

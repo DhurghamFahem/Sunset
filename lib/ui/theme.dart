@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
 
-// Shared studio palette; text colors retain contrast on paper surfaces.
-const forest = Color(0xFF254B40);
-const ivory = Color(0xFFF8F7F2);
-const muted = Color(0xFF66736B);
-const ink = Color(0xFF22392F);
-const sage = Color(0xFFE8EEE6);
-const line = Color(0xFFDDE3D9);
-const paper = Color(0xFFFFFFFF);
-const clay = Color(0xFF866449);
+// G2G sticker palette: cream paper, charcoal ink, leaf green and sun orange.
+// Text colors retain contrast on paper surfaces.
+const forest = Color(0xFF3E6A2B); // leaf green
+const ivory = Color(0xFFF5EFE2); // sticker cream
+const muted = Color(0xFF6B655A);
+const ink = Color(0xFF151515); // charcoal
+const sage = Color(0xFFE4E9D5); // pale leaf
+const line = Color(0xFFE3DAC8);
+const paper = Color(0xFFFCF9F2);
+const clay = Color(0xFFD96B30); // sun orange
+
+// Body text uses Tajawal; headings use El Messiri, whose calligraphic
+// curves echo the G2G wordmark.
+const bodyFont = 'Tajawal';
+const displayFont = 'ElMessiri';
 
 ThemeData catalogTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: forest,
-    primary: forest,
-    onPrimary: paper,
+    primary: ink,
+    onPrimary: ivory,
     primaryContainer: sage,
     onPrimaryContainer: forest,
-    secondary: clay,
+    secondary: forest,
+    onSecondary: ivory,
     secondaryContainer: sage,
     onSecondaryContainer: forest,
+    tertiary: clay,
+    onTertiary: ink,
     surface: ivory,
     onSurface: ink,
     outline: muted,
@@ -28,30 +37,34 @@ ThemeData catalogTheme() {
   final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(16));
   return ThemeData(
     useMaterial3: true,
-    fontFamily: 'NotoArabic',
+    fontFamily: bodyFont,
     fontFamilyFallback: const ['G2GSymbols'],
     scaffoldBackgroundColor: ivory,
     colorScheme: scheme,
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
+        fontFamily: displayFont,
         fontSize: 36,
         height: 1.5,
         fontWeight: FontWeight.w700,
         color: ink,
       ),
       headlineMedium: TextStyle(
+        fontFamily: displayFont,
         fontSize: 28,
         height: 1.5,
         fontWeight: FontWeight.w700,
         color: ink,
       ),
       headlineSmall: TextStyle(
+        fontFamily: displayFont,
         fontSize: 24,
         height: 1.5,
         fontWeight: FontWeight.w700,
         color: ink,
       ),
       titleLarge: TextStyle(
+        fontFamily: displayFont,
         fontSize: 22,
         height: 1.5,
         fontWeight: FontWeight.w700,
@@ -83,7 +96,7 @@ ThemeData catalogTheme() {
       centerTitle: false,
       toolbarHeight: 72,
       titleTextStyle: TextStyle(
-        fontFamily: 'NotoArabic',
+        fontFamily: displayFont,
         fontSize: 18,
         fontWeight: FontWeight.w700,
         color: ink,
@@ -105,7 +118,7 @@ ThemeData catalogTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: forest, width: 2),
+        borderSide: const BorderSide(color: ink, width: 2),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -113,7 +126,7 @@ ThemeData catalogTheme() {
         minimumSize: const Size(48, 52),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         textStyle: const TextStyle(
-          fontFamily: 'NotoArabic',
+          fontFamily: bodyFont,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
@@ -139,10 +152,11 @@ ThemeData catalogTheme() {
       backgroundColor: paper,
       selectedColor: sage,
       checkmarkColor: forest,
+      secondarySelectedColor: sage,
       side: const BorderSide(color: line),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       labelStyle: const TextStyle(
-        fontFamily: 'NotoArabic',
+        fontFamily: bodyFont,
         color: forest,
         fontSize: 13,
       ),
@@ -186,6 +200,7 @@ ThemeData catalogTheme() {
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: forest,
       linearTrackColor: sage,
+      circularTrackColor: sage,
     ),
     navigationBarTheme: const NavigationBarThemeData(
       backgroundColor: paper,

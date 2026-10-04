@@ -51,7 +51,7 @@ class SelectionRenderer {
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
       const width = 1200.0, height = 1680.0;
-      canvas.drawColor(const Color(0xFFF9F7F1), BlendMode.src);
+      canvas.drawColor(const Color(0xFFF5EFE2), BlendMode.src);
       if (AppConfig.logoAsset.isEmpty) {
         _text(
           canvas,
@@ -175,8 +175,8 @@ class SelectionRenderer {
       text: TextSpan(
         text: value,
         style: TextStyle(
-          fontFamily: 'NotoArabic',
-          color: const Color(0xFF253B30),
+          fontFamily: 'Tajawal',
+          color: const Color(0xFF151515),
           fontSize: size,
           fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
         ),
