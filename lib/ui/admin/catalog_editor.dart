@@ -165,7 +165,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
       };
       if (!widget.isCategory) {
         data.addAll({
-          'code': code.text.trim().toUpperCase(),
+          'code': code.text,
           'tags': parseCatalogTags(tags.text),
           'category_ids': categoryIds.toList(),
           'audiences': audiences.map((value) => value.name).toList(),
@@ -429,15 +429,16 @@ class _CatalogEditorState extends State<CatalogEditor> {
                         TextFormField(
                           controller: code,
                           textDirection: TextDirection.ltr,
+                          keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
                             labelText: 'كود الوشم (للإدارة)',
-                            hintText: 'G2G-001',
+                            hintText: '001',
                           ),
-                          validator: (v) =>
-                              RegExp(r'^G2G-[0-9]{3,}$')
-                                  .hasMatch((v ?? '').trim().toUpperCase())
+                          validator: (value) =>
+                              (value ?? '').isNotEmpty &&
+                                  !RegExp(r'[^0-9]').hasMatch(value!)
                               ? null
-                              : 'مثال: G2G-001',
+                              : 'أدخل أرقام فقط (0-9)',
                         ),
                         const SizedBox(height: 14),
                       ],

@@ -8,7 +8,7 @@ set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000091';
 do $$
 declare saved uuid; payload jsonb; bad jsonb;
 begin
-  payload := '{"code":"G2G-88991","name_ar":"Test gallery","width_cm":3,"height_cm":5,"image_url":"https://example.invalid/cover.png","thumbnail_url":"https://example.invalid/cover-thumb.png","category_ids":["10000000-0000-4000-8000-000000000091"],"audiences":["men","women"],"body_placements":["arm"],"additional_images":[{"image_url":"https://example.invalid/second.png","thumbnail_url":"https://example.invalid/second-thumb.png"},{"image_url":"https://example.invalid/third.png"}]}';
+  payload := '{"code":"88991","name_ar":"Test gallery","width_cm":3,"height_cm":5,"image_url":"https://example.invalid/cover.png","thumbnail_url":"https://example.invalid/cover-thumb.png","category_ids":["10000000-0000-4000-8000-000000000091"],"audiences":["men","women"],"body_placements":["arm"],"additional_images":[{"image_url":"https://example.invalid/second.png","thumbnail_url":"https://example.invalid/second-thumb.png"},{"image_url":"https://example.invalid/third.png"}]}';
   saved := public.save_catalog_product(payload);
   if not exists(select 1 from public.catalog_products where id = saved and jsonb_array_length(additional_images) = 2 and additional_images->0->>'image_url' = 'https://example.invalid/second.png') then
     raise exception 'Gallery did not round trip through public view';
@@ -32,7 +32,7 @@ end $$;
 reset role;
 set local role anon;
 do $$ begin
-  if not exists(select 1 from public.catalog_products where code = 'G2G-88991' and additional_images = '[]'::jsonb) then raise exception 'Public gallery read failed'; end if;
+  if not exists(select 1 from public.catalog_products where code = '88991' and additional_images = '[]'::jsonb) then raise exception 'Public gallery read failed'; end if;
 end $$;
 reset role;
 rollback;

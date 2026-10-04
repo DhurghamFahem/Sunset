@@ -50,7 +50,7 @@ The legacy name `SUPABASE_ANON_KEY` accepts either an anon key or the newer publ
 
 ## Database, RLS, and Storage
 
-On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610010001_names_sizes_tags.sql`, before using this version with Supabase. Alternatively link a project and apply migrations using the Supabase CLI:
+On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610040001_free_form_product_codes.sql` and `202610040002_numeric_product_codes.sql` for numeric product codes, before using this version with Supabase. Product codes accept one or more digits (0–9), preserve leading zeros, and must be unique. Existing codes are preserved, but must be changed to digits when updating a legacy product. Alternatively link a project and apply migrations using the Supabase CLI:
 
 ```sh
 npx supabase login
@@ -93,7 +93,7 @@ values ('REPLACE-WITH-AUTH-USER-UUID');
 
 1. Open **التصنيفات** in the admin area and tap **+**.
 2. Enter `وشومات سوار`, upload its image if available, set the numeric sort order, and save.
-3. Open **المنتجات**, tap **+**, add one or more tattoo images, and enter a unique code such as `G2G-001`. Use **إضافة صورة** again for each additional image. The first image is the cover for cards and selection exports; use the star button to promote another image, or the delete button to remove an image from the gallery. At least one image is required. Customers can swipe, use arrows, or tap thumbnails to see every image and zoom into details.
+3. Open **المنتجات**, tap **+**, add one or more tattoo images, and enter a unique code such as `001`. Use **إضافة صورة** again for each additional image. The first image is the cover for cards and selection exports; use the star button to promote another image, or the delete button to remove an image from the gallery. At least one image is required. Customers can swipe, use arrows, or tap thumbnails to see every image and zoom into details.
 4. Enter the required customer-facing tattoo name and exact width and height in centimeters. Select رجالي, نسائي, or both; choose one or more body placements and one or more categories. Add search tags separated by Arabic/English commas, semicolons, or newlines (up to 30 tags, 64 characters each); normalized duplicates are removed. Price remains optional.
 5. Set **ظاهر بالكتالوج**, **مميز**, and **وصل حديثاً** as needed.
 6. Use **حفظ وإضافة وشم آخر** to keep the audiences, placements, categories, dimensions, and price but clear the code, name, tags, and images for the next design.

@@ -5,10 +5,10 @@ insert into public.categories(id, name_ar, active) values
   ('10000000-0000-4000-8000-000000000071','Tag filter visible',true),
   ('10000000-0000-4000-8000-000000000072','Tag filter hidden',false);
 insert into public.products(id, code, name_ar, image_url, active, tags) values
-  ('20000000-0000-4000-8000-000000000071','G2G-88771','First','https://example.invalid/1.png',true,array['public-tag-test','shared-tag-test']),
-  ('20000000-0000-4000-8000-000000000072','G2G-88772','Second','https://example.invalid/2.png',true,array['shared-tag-test']),
-  ('20000000-0000-4000-8000-000000000073','G2G-88773','Hidden category','https://example.invalid/3.png',true,array['hidden-tag-test']),
-  ('20000000-0000-4000-8000-000000000074','G2G-88774','Inactive','https://example.invalid/4.png',false,array['inactive-tag-test']);
+  ('20000000-0000-4000-8000-000000000071','88771','First','https://example.invalid/1.png',true,array['public-tag-test','shared-tag-test']),
+  ('20000000-0000-4000-8000-000000000072','88772','Second','https://example.invalid/2.png',true,array['shared-tag-test']),
+  ('20000000-0000-4000-8000-000000000073','88773','Hidden category','https://example.invalid/3.png',true,array['hidden-tag-test']),
+  ('20000000-0000-4000-8000-000000000074','88774','Inactive','https://example.invalid/4.png',false,array['inactive-tag-test']);
 insert into public.product_categories values
   ('20000000-0000-4000-8000-000000000071','10000000-0000-4000-8000-000000000071'),
   ('20000000-0000-4000-8000-000000000072','10000000-0000-4000-8000-000000000071'),

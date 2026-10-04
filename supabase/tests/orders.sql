@@ -5,7 +5,7 @@ insert into public.categories(id, name_ar) values ('10000000-0000-4000-8000-0000
 set local role authenticated;
 set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000093';
 insert into public.products(id, code, name_ar, image_url, width_cm, height_cm, price)
-  values ('20000000-0000-4000-8000-000000000093', 'G2G-99993', 'Order flower', 'https://example.invalid/flower.png', 5, 8, 5000);
+  values ('20000000-0000-4000-8000-000000000093', '99993', 'Order flower', 'https://example.invalid/flower.png', 5, 8, 5000);
 insert into public.product_categories(product_id, category_id) values ('20000000-0000-4000-8000-000000000093', '10000000-0000-4000-8000-000000000093');
 insert into public.employees(id, name, phone) values ('30000000-0000-4000-8000-000000000093', 'Test employee', '07701234567');
 update public.order_settings set delivery_cost = 5000;

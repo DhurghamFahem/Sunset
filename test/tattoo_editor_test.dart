@@ -40,7 +40,7 @@ void main() {
   });
   const product = Tattoo(
     id: 'existing',
-    code: 'G2G-001',
+    code: '001',
     name: 'وردة ناعمة',
     width: 3,
     height: 5,
@@ -94,6 +94,10 @@ void main() {
     'editing retains multiple categories and saves changed audience and places',
     (tester) async {
       final admin = await openEditor(tester);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'كود الوشم (للإدارة)'),
+        '001234',
+      );
       for (final label in [
         'رجالي',
         'نسائي',
@@ -115,7 +119,7 @@ void main() {
       expect(admin.savedId, 'existing');
       expect(admin.saved!['audiences'], ['men']);
       expect(admin.saved!['name_ar'], 'وردة ناعمة');
-      expect(admin.saved!['code'], 'G2G-001');
+      expect(admin.saved!['code'], '001234');
       expect(admin.saved!['width_cm'], 3);
       expect(admin.saved!['height_cm'], 5);
       expect(admin.saved!['tags'], ['وردة', 'ناعم']);
@@ -128,6 +132,23 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('product codes require digits and preserve leading zeros', (
+    tester,
+  ) async {
+    final admin = await openEditor(tester);
+    final field = find.widgetWithText(TextFormField, 'كود الوشم (للإدارة)');
+    for (final value in ['', 'abc', '12+', '1 2', '١٢']) {
+      await tester.enterText(field, value);
+      await tapVisible(tester, find.text('حفظ'));
+      expect(admin.saved, isNull, reason: 'Rejected code: $value');
+      expect(find.text('أدخل أرقام فقط (0-9)'), findsOneWidget);
+    }
+    await tester.enterText(field, '0');
+    await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
+    expect(admin.saved!['code'], '0');
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('editor rejects empty audiences, placements, and categories', (
     tester,
