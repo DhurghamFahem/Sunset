@@ -175,13 +175,13 @@ class TattooOrder {
     '',
     ...items.map(
       (i) =>
-          '${i.name} × ${i.quantity}\n'
-          'سعر القطعة: ${AppConfig.money(i.originalPrice ?? 0)}'
+          '${i.name}${i.quantity > 1 ? ' × ${i.quantity}' : ''}\n'
+          '${i.quantity > 1 ? 'سعر القطعة' : 'السعر'}: ${AppConfig.money(i.originalPrice ?? 0)}'
           '${i.originalPrice != i.unitPrice ? ' ← ${AppConfig.money(i.unitPrice ?? 0)}' : ''}'
-          ' | المجموع: ${AppConfig.money((i.unitPrice ?? 0) * i.quantity)}',
+          '${i.quantity > 1 ? ' | المجموع: ${AppConfig.money((i.unitPrice ?? 0) * i.quantity)}' : ''}',
     ),
     '',
-    'قيمة الوشومات الأصلية: ${AppConfig.money(originalSubtotal)}',
+    'قيمة الوشومات: ${AppConfig.money(originalSubtotal)}',
     'التوصيل: ${AppConfig.money(deliveryCost)}',
     if (discount != 0) 'المجموع قبل الخصم: ${AppConfig.money(originalTotal)}',
     if (itemDiscount != 0) 'خصم القطع: ${AppConfig.money(itemDiscount)}',
