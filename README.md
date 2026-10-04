@@ -150,7 +150,7 @@ The workflow in `.github/workflows/deploy-pages.yml` builds and deploys when the
 
 1. Push this repository, including the workflow, to GitHub.
 2. In **Settings → Pages → Build and deployment**, set **Source** to **GitHub Actions**.
-3. By default, deployments use the bundled test catalog. For real Supabase data, add repository variables under **Settings → Secrets and variables → Actions → Variables**: `USE_TEST_DATA` = `false`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` (the public anon/publishable key). These values are compiled into the public website; never use a service-role key. Local configuration files are not used by this workflow.
+3. GitHub Pages deployments always use live Supabase data (`USE_TEST_DATA=false`). Add repository secrets named `SUPABASE_URL` and `SUPABASE_ANON_KEY` under **Settings → Secrets and variables → Actions → Secrets**. The build stops if either secret is missing. Use the public anon/publishable key; these settings are compiled into the public website, so never use a service-role key. Local configuration files and repository variables are not used by this workflow. Push a new deployment after changing secrets; an existing build will not pick up changes automatically.
 4. Commit and push to the default branch:
 
    ```sh

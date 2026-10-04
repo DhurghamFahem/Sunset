@@ -35,10 +35,15 @@ jobs:
       - name: Build website
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          USE_TEST_DATA: ${{ vars.USE_TEST_DATA || 'true' }}
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          USE_TEST_DATA: 'false'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # Public browser key; never replace with a service-role key.
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Add repository Actions secrets SUPABASE_URL and SUPABASE_ANON_KEY before deploying."
+            exit 1
+          fi
           flutter build web --release \
             --base-href "${PAGES_BASE_PATH}/" \
             --dart-define="USE_TEST_DATA=${USE_TEST_DATA}" \
