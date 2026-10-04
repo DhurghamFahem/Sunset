@@ -130,6 +130,10 @@ void main() {
           expect(saved.bookingMessage.contains('خصم القطع:'), itemDiscount);
           expect(saved.bookingMessage.contains('خصم إضافي:'), extraDiscount);
           expect(
+            saved.bookingMessage.contains('المجموع قبل الخصم:'),
+            itemDiscount || extraDiscount,
+          );
+          expect(
             saved.bookingMessage.contains('إجمالي الخصم:'),
             itemDiscount || extraDiscount,
           );

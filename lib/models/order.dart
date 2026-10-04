@@ -183,7 +183,7 @@ class TattooOrder {
     '',
     'قيمة الوشومات الأصلية: ${AppConfig.money(originalSubtotal)}',
     'التوصيل: ${AppConfig.money(deliveryCost)}',
-    'المجموع قبل الخصم: ${AppConfig.money(originalTotal)}',
+    if (discount != 0) 'المجموع قبل الخصم: ${AppConfig.money(originalTotal)}',
     if (itemDiscount != 0) 'خصم القطع: ${AppConfig.money(itemDiscount)}',
     if (extraDiscount != 0) 'خصم إضافي: ${AppConfig.money(extraDiscount)}',
     if (discount != 0) 'إجمالي الخصم: ${AppConfig.money(discount)}',
