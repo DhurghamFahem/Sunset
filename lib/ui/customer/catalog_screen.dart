@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import '../../app_scope.dart';
 import '../../models/catalog.dart';
 import '../../state/catalog_controller.dart';
+import '../../services/catalog_image_exporter.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/tattoo_card.dart';
 import 'catalog_filter_sheet.dart';
+import 'share_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key, this.categoryId});
+  const CatalogScreen({super.key, this.categoryId, this.forCustomer = false});
   final String? categoryId;
+  final bool forCustomer;
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
 }
@@ -19,6 +22,61 @@ class _CatalogScreenState extends State<CatalogScreen> {
   CatalogController? _controller;
   final scroll = ScrollController();
   final search = TextEditingController();
+  bool exporting = false;
+  double progress = 0;
+
+  Future<void> exportForCustomer() async {
+    if (exporting) return;
+    final c = _controller!;
+    final app = AppScope.of(context);
+    final query = CatalogQuery(
+      categoryId: c.categoryId,
+      audience: c.audience,
+      bodyPlacements: List.of(c.bodyPlacements),
+      sizes: List.of(c.sizes),
+      tags: List.of(c.tags),
+      search: c.search,
+      sort: c.sort,
+    );
+    setState(() {
+      exporting = true;
+      progress = 0;
+    });
+    try {
+      final result = await CatalogImageExporter().generate(
+        app.catalog,
+        query,
+        onProgress: (value) {
+          if (mounted) setState(() => progress = value);
+        },
+      );
+      if (!mounted) return;
+      final notice = result.reused
+          ? 'تم استخدام الصور المحفوظة.'
+          : result.saved
+          ? 'تم تجهيز الصور وحفظها للاستخدام مرة ثانية.'
+          : 'الصور جاهزة. تعذر حفظ نسخة تلقائية على الجهاز؛ احفظ الصور الآن.';
+      await Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ShareScreen(
+            pages: result.pages,
+            catalogExport: true,
+            exportNotice: notice,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        showNotice(
+          context,
+          'تعذر تجهيز الصور. تأكد من وجود وشومات مطابقة واتصالك ثم حاول مرة ثانية.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => exporting = false);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -79,207 +137,247 @@ class _CatalogScreenState extends State<CatalogScreen> {
           final category = c.categories
               .where((value) => value.id == c.categoryId)
               .firstOrNull;
-          return Center(
-            child: SizedBox(
-              width: width,
-              child: CustomScrollView(
-                controller: scroll,
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                key: PageStorageKey('catalog-${widget.categoryId ?? 'all'}'),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 16, bottom: 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _CatalogIntro(
-                            title: category?.name,
-                            wide: width >= 650,
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: search,
-                                  onChanged: c.setSearch,
-                                  textInputAction: TextInputAction.search,
-                                  onSubmitted: (_) =>
-                                      FocusScope.of(context).unfocus(),
-                                  decoration: InputDecoration(
-                                    hintText: 'تدور على شي معيّن؟',
-                                    hintStyle: const TextStyle(fontSize: 13),
-                                    prefixIcon: const Icon(
-                                      Icons.search,
-                                      size: 22,
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    suffixIcon: search.text.isEmpty
-                                        ? null
-                                        : IconButton(
-                                            tooltip: 'مسح البحث',
-                                            icon: const Icon(
-                                              Icons.close,
-                                              size: 18,
-                                            ),
-                                            onPressed: () {
-                                              search.clear();
-                                              c.setSearch('');
-                                            },
-                                          ),
-                                  ),
-                                ),
+          return AbsorbPointer(
+            absorbing: exporting,
+            child: Center(
+              child: SizedBox(
+                width: width,
+                child: CustomScrollView(
+                  controller: scroll,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  key: PageStorageKey('catalog-${widget.categoryId ?? 'all'}'),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _CatalogIntro(
+                              title: widget.forCustomer
+                                  ? 'صور للزبون بالأسعار'
+                                  : category?.name,
+                              wide: width >= 650,
+                            ),
+                            const SizedBox(height: 20),
+                            if (widget.forCustomer) ...[
+                              const Text(
+                                'فلتر الوشومات وجهّز صور كل النتائج بالأسعار، بدون إنشاء طلب.',
                               ),
-                              const SizedBox(width: 10),
-                              OutlinedButton.icon(
-                                key: const ValueKey('open-filters'),
-                                onPressed: filters,
-                                icon: const Icon(Icons.tune, size: 19),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'نحفظ الصور على هذا الجهاز لإعادة استخدامها ما دامت الوشومات والأسعار نفسها.',
+                                style: TextStyle(color: muted, fontSize: 12),
+                              ),
+                              const SizedBox(height: 10),
+                              FilledButton.icon(
+                                key: const ValueKey('export-catalog-images'),
+                                onPressed:
+                                    exporting ||
+                                        c.loading ||
+                                        c.failed ||
+                                        c.products.isEmpty
+                                    ? null
+                                    : exportForCustomer,
+                                icon: const Icon(Icons.image_outlined),
                                 label: Text(
-                                  c.filterCount == 0
-                                      ? 'فلترة'
-                                      : 'فلترة (${c.filterCount})',
+                                  exporting
+                                      ? 'جاري تجهيز الصور…'
+                                      : 'تجهيز صور النتائج للزبون',
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
+                              ),
+                              if (exporting)
+                                LinearProgressIndicator(
+                                  value: progress > 0 ? progress : null,
+                                ),
+                              const SizedBox(height: 16),
+                            ],
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: search,
+                                    onChanged: c.setSearch,
+                                    textInputAction: TextInputAction.search,
+                                    onSubmitted: (_) =>
+                                        FocusScope.of(context).unfocus(),
+                                    decoration: InputDecoration(
+                                      hintText: 'تدور على شي معيّن؟',
+                                      hintStyle: const TextStyle(fontSize: 13),
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        size: 22,
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                      suffixIcon: search.text.isEmpty
+                                          ? null
+                                          : IconButton(
+                                              tooltip: 'مسح البحث',
+                                              icon: const Icon(
+                                                Icons.close,
+                                                size: 18,
+                                              ),
+                                              onPressed: () {
+                                                search.clear();
+                                                c.setSearch('');
+                                              },
+                                            ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              ChoiceChip(
-                                label: const Text('الجميع'),
-                                selected: c.audience == null,
-                                onSelected: (_) => c.setAudience(null),
-                              ),
-                              for (final value in TattooAudience.values)
+                                const SizedBox(width: 10),
+                                OutlinedButton.icon(
+                                  key: const ValueKey('open-filters'),
+                                  onPressed: filters,
+                                  icon: const Icon(Icons.tune, size: 19),
+                                  label: Text(
+                                    c.filterCount == 0
+                                        ? 'فلترة'
+                                        : 'فلترة (${c.filterCount})',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: [
                                 ChoiceChip(
-                                  label: Text(value.label),
-                                  selected: c.audience == value,
-                                  onSelected: (_) => c.setAudience(value),
+                                  label: const Text('الجميع'),
+                                  selected: c.audience == null,
+                                  onSelected: (_) => c.setAudience(null),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'اكتشف التصاميم',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                                for (final value in TattooAudience.values)
+                                  ChoiceChip(
+                                    label: Text(value.label),
+                                    selected: c.audience == value,
+                                    onSelected: (_) => c.setAudience(value),
                                   ),
-                                ),
-                              ),
-                              Text(
-                                c.loading
-                                    ? 'جاري التحميل…'
-                                    : '${c.products.length}${c.hasMore ? '+' : ''} تصميم',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: muted,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (c.hasFilters)
+                              ],
+                            ),
+                            const SizedBox(height: 10),
                             Row(
                               children: [
                                 const Expanded(
                                   child: Text(
-                                    'حسب اختيارك',
+                                    'اكتشف التصاميم',
                                     style: TextStyle(
-                                      color: muted,
-                                      fontSize: 12,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: reset,
-                                  child: const Text('عرض الكل'),
+                                Text(
+                                  c.loading
+                                      ? 'جاري التحميل…'
+                                      : '${c.products.length}${c.hasMore ? '+' : ''} تصميم',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: muted,
+                                  ),
                                 ),
                               ],
                             ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => index >= c.products.length
-                          ? const SkeletonBox()
-                          : TattooCard(c.products[index]),
-                      childCount:
-                          c.products.length + (c.loading ? columns * 2 : 0),
-                    ),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: width < 600 ? 12 : 20,
-                      mainAxisExtent:
-                          (width < 400
-                              ? 292.0
-                              : width < 650
-                              ? 330.0
-                              : (MediaQuery.sizeOf(context).height - 440).clamp(
-                                  300.0,
-                                  420.0,
-                                )) +
-                          (MediaQuery.textScalerOf(context).scale(14) - 14) * 5,
-                    ),
-                  ),
-                  if (c.failed)
-                    SliverToBoxAdapter(
-                      child: MessagePanel(
-                        title: 'تعذر تحميل الوشومات',
-                        detail: 'اختياراتك بعدها محفوظة.',
-                        icon: Icons.wifi_off_outlined,
-                        action: OutlinedButton(
-                          onPressed: c.loadMore,
-                          child: const Text('إعادة المحاولة'),
+                            if (c.hasFilters)
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'حسب اختيارك',
+                                      style: TextStyle(
+                                        color: muted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: reset,
+                                    child: const Text('عرض الكل'),
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  if (!c.failed && !c.loading && c.products.isEmpty)
-                    SliverToBoxAdapter(
-                      child: MessagePanel(
-                        title: c.hasFilters
-                            ? 'ما لقينا وشم يطابق اختيارك'
-                            : 'قريباً نضيف موديلات جديدة 🌿',
-                        detail: c.hasFilters
-                            ? 'جرّب تشوف باقي التصاميم.'
-                            : null,
-                        action: c.hasFilters
-                            ? FilledButton(
-                                onPressed: reset,
-                                child: const Text('عرض كل الوشومات'),
-                              )
-                            : null,
+                    SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => index >= c.products.length
+                            ? const SkeletonBox()
+                            : TattooCard(
+                                c.products[index],
+                                readOnly: widget.forCustomer,
+                              ),
+                        childCount:
+                            c.products.length + (c.loading ? columns * 2 : 0),
+                      ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisSpacing: 20,
+                        crossAxisSpacing: width < 600 ? 12 : 20,
+                        mainAxisExtent:
+                            (width < 400
+                                ? 292.0
+                                : width < 650
+                                ? 330.0
+                                : (MediaQuery.sizeOf(context).height - 440)
+                                      .clamp(300.0, 420.0)) +
+                            (MediaQuery.textScalerOf(context).scale(14) - 14) *
+                                5,
                       ),
                     ),
-                  if (!c.loading && c.hasMore && !c.failed)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: OutlinedButton(
-                          onPressed: c.loadMore,
-                          child: const Text('وشومات أكثر'),
+                    if (c.failed)
+                      SliverToBoxAdapter(
+                        child: MessagePanel(
+                          title: 'تعذر تحميل الوشومات',
+                          detail: 'اختياراتك بعدها محفوظة.',
+                          icon: Icons.wifi_off_outlined,
+                          action: OutlinedButton(
+                            onPressed: c.loadMore,
+                            child: const Text('إعادة المحاولة'),
+                          ),
                         ),
                       ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                ],
+                    if (!c.failed && !c.loading && c.products.isEmpty)
+                      SliverToBoxAdapter(
+                        child: MessagePanel(
+                          title: c.hasFilters
+                              ? 'ما لقينا وشم يطابق اختيارك'
+                              : 'قريباً نضيف موديلات جديدة 🌿',
+                          detail: c.hasFilters
+                              ? 'جرّب تشوف باقي التصاميم.'
+                              : null,
+                          action: c.hasFilters
+                              ? FilledButton(
+                                  onPressed: reset,
+                                  child: const Text('عرض كل الوشومات'),
+                                )
+                              : null,
+                        ),
+                      ),
+                    if (!c.loading && c.hasMore && !c.failed)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: OutlinedButton(
+                            onPressed: c.loadMore,
+                            child: const Text('وشومات أكثر'),
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
+                ),
               ),
             ),
           );

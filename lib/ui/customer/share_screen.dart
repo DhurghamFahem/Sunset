@@ -5,13 +5,25 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_scope.dart';
 import '../../config.dart';
+import '../../models/order.dart';
 import '../../services/share/share_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
 class ShareScreen extends StatefulWidget {
-  const ShareScreen({super.key, required this.pages});
+  const ShareScreen({
+    super.key,
+    required this.pages,
+    this.catalogExport = false,
+    this.initialSource = OrderSource.instagram,
+    this.onSourceChanged,
+    this.exportNotice,
+  });
   final List<Uint8List> pages;
+  final bool catalogExport;
+  final OrderSource initialSource;
+  final Future<void> Function(OrderSource)? onSourceChanged;
+  final String? exportNotice;
   @override
   State<ShareScreen> createState() => _ShareScreenState();
 }
@@ -21,12 +33,15 @@ class _ShareScreenState extends State<ShareScreen> {
   final preview = PageController();
   final downloaded = <int>{};
   int current = 0;
+  late OrderSource source = widget.initialSource;
+  bool savingSource = false;
+  bool canShare = false;
   bool get allDownloaded => downloaded.length == widget.pages.length;
 
   @override
   void initState() {
     super.initState();
-    service.prepare(widget.pages);
+    canShare = service.prepare(widget.pages);
   }
 
   @override
@@ -46,17 +61,47 @@ class _ShareScreenState extends State<ShareScreen> {
     if (next != null) preview.jumpToPage(next);
   }
 
-  Future<void> openInstagram() async {
-    AppScope.of(context).analytics.event('instagram_clicked');
+  Future<void> changeSource(OrderSource value) async {
+    if (savingSource || value == source) return;
+    setState(() => savingSource = true);
+    try {
+      await widget.onSourceChanged?.call(value);
+      if (mounted) setState(() => source = value);
+    } catch (e) {
+      if (mounted) {
+        showNotice(
+          context,
+          e is OrderException
+              ? e.message
+              : 'تعذر حفظ منصة الإرسال. حاول مرة ثانية.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => savingSource = false);
+    }
+  }
+
+  Future<void> shareWithCustomer() async {
+    final result = await service.share();
+    if (mounted && result != 'shared' && result != 'cancelled') {
+      showNotice(context, 'احفظ الصور وأرفقها بمحادثة الزبون.');
+    }
+  }
+
+  Future<void> openChat() async {
+    final whatsapp = source == OrderSource.whatsapp;
+    AppScope.of(context).analytics.event('${source.name}_clicked');
     final opened = await launchUrl(
-      Uri.parse(AppConfig.instagramUrl),
+      Uri.parse(whatsapp ? AppConfig.whatsappUrl : AppConfig.instagramUrl),
       mode: LaunchMode.externalApplication,
       webOnlyWindowName: '_blank',
     );
     if (!opened && mounted) {
       showNotice(
         context,
-        'افتح Instagram ودز الصور إلى @${AppConfig.instagramUsername}',
+        whatsapp
+            ? 'افتح WhatsApp ودز الصور إلى 07778700244'
+            : 'افتح Instagram ودز الصور إلى @${AppConfig.instagramUsername}',
       );
     }
   }
@@ -65,7 +110,9 @@ class _ShareScreenState extends State<ShareScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إرسال اختياراتك'),
+        title: Text(
+          widget.catalogExport ? 'صور للزبون بالأسعار' : 'إرسال اختياراتك',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -84,21 +131,32 @@ class _ShareScreenState extends State<ShareScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      const JourneySteps(current: 2),
+                      if (!widget.catalogExport) const JourneySteps(current: 2),
                       const SizedBox(height: 24),
                       Text(
-                        'ذوقك صار بصورة.',
+                        widget.catalogExport
+                            ? 'صور الوشومات جاهزة.'
+                            : 'ذوقك صار بصورة.',
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        widget.pages.length == 1
+                        widget.catalogExport
+                            ? 'احفظ الصور وأرسلها للزبون. الأسعار للقطعة، ولم يتم إنشاء طلب.'
+                            : widget.pages.length == 1
                             ? 'جمعنالك اختياراتك بصورة وحدة. احفظها ودزها إلنا بالمحادثة.'
                             : 'جمعنالك اختياراتك بـ ${widget.pages.length} صور. احفظها ودزها إلنا بالمحادثة.',
                         style: const TextStyle(color: muted),
                       ),
                       const SizedBox(height: 16),
+                      if (widget.exportNotice != null) ...[
+                        Text(
+                          widget.exportNotice!,
+                          style: const TextStyle(color: forest, fontSize: 12),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       SizedBox(
                         height: (MediaQuery.sizeOf(context).height * .38).clamp(
                           150.0,
@@ -166,29 +224,63 @@ class _ShareScreenState extends State<ShareScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        allDownloaded
+                        widget.catalogExport
+                            ? 'أرفق الصور المحفوظة بمحادثة الزبون.'
+                            : allDownloaded
                             ? 'تأكد إن الصور انحفظت، وبعدين أرفقها بالمحادثة ودزها إلنا.'
-                            : 'احفظ صور اختياراتك، وبعدين افتح محادثتنا على Instagram.',
+                            : 'احفظ صور اختياراتك، وبعدين افتح محادثتنا.',
                         style: const TextStyle(fontSize: 13, color: muted),
                       ),
                       const SizedBox(height: 10),
+                      if (!widget.catalogExport) ...[
+                        SegmentedButton<OrderSource>(
+                          segments: const [
+                            ButtonSegment(
+                              value: OrderSource.instagram,
+                              label: Text('Instagram'),
+                            ),
+                            ButtonSegment(
+                              value: OrderSource.whatsapp,
+                              label: Text('WhatsApp'),
+                            ),
+                          ],
+                          selected: {source},
+                          onSelectionChanged: savingSource
+                              ? null
+                              : (values) => changeSource(values.single),
+                        ),
+                        if (savingSource) const LinearProgressIndicator(),
+                        const SizedBox(height: 10),
+                      ],
                       FilledButton.icon(
                         key: const ValueKey('share-next'),
-                        onPressed: allDownloaded ? openInstagram : download,
+                        onPressed: savingSource
+                            ? null
+                            : widget.catalogExport
+                            ? download
+                            : allDownloaded
+                            ? openChat
+                            : download,
                         icon: Icon(
-                          allDownloaded
+                          allDownloaded && !widget.catalogExport
                               ? Icons.open_in_new
                               : Icons.download_outlined,
                         ),
                         label: Text(
-                          allDownloaded
-                              ? 'افتح محادثتنا على Instagram'
+                          allDownloaded && !widget.catalogExport
+                              ? 'افتح محادثتنا على ${source.label}'
                               : widget.pages.length == 1
                               ? 'حفظ الصورة'
                               : 'حفظ الصورة ${current + 1} / ${widget.pages.length}',
                         ),
                       ),
-                      if (allDownloaded)
+                      if (widget.catalogExport && canShare)
+                        TextButton.icon(
+                          onPressed: shareWithCustomer,
+                          icon: const Icon(Icons.share_outlined),
+                          label: const Text('مشاركة مع الزبون'),
+                        ),
+                      if (allDownloaded && !widget.catalogExport)
                         TextButton(
                           onPressed: download,
                           child: const Text('حفظ الصورة مرة ثانية'),

@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sunset/app.dart';
 import 'package:sunset/app_scope.dart';
 import 'package:sunset/models/catalog.dart';
+import 'package:sunset/models/order.dart';
 import 'package:sunset/repositories/test_catalog_repository.dart';
 import 'package:sunset/services/analytics.dart';
 import 'package:sunset/services/admin_service.dart';
@@ -17,6 +18,7 @@ import 'package:sunset/ui/admin/admin_screen.dart';
 import 'package:sunset/state/selection_store.dart';
 import 'package:sunset/ui/customer/catalog_filter_sheet.dart';
 import 'package:sunset/ui/customer/share_screen.dart';
+import 'package:sunset/ui/customer/catalog_screen.dart';
 import 'package:sunset/ui/widgets/tattoo_card.dart';
 
 import 'support/fixtures.dart';
@@ -38,6 +40,9 @@ void main() {
     await (FontLoader(
       'Tajawal',
     )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
+    await (FontLoader(
+      'ElMessiri',
+    )..addFont(rootBundle.load('assets/fonts/ElMessiri-700.ttf'))).load();
     await (FontLoader(
       'G2GSymbols',
     )..addFont(rootBundle.load('assets/fonts/G2GSymbols.ttf'))).load();
@@ -397,6 +402,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ShareScreen), findsOneWidget);
       expect(find.text('حفظ الصورة').hitTestable(), findsOneWidget);
+      final app = AppScope.of(tester.element(find.byType(ShareScreen)));
+      await tester.tap(find.text('WhatsApp'));
+      await tester.pumpAndSettle();
+      expect((await app.orders.list()).single.source, OrderSource.whatsapp);
+      await tester.tap(find.text('Instagram'));
+      await tester.pumpAndSettle();
+      expect((await app.orders.list()).single.source, OrderSource.instagram);
       // The sharing route covers the catalog shell rather than nesting app bars.
       expect(find.byType(AppBar), findsOneWidget);
       await tester.tap(find.text('تعديل'));
@@ -412,6 +424,55 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       await selection.flush();
+      await tester.pumpWidget(const SizedBox());
+      selection.dispose();
+    },
+  );
+
+  testWidgets(
+    'admin filtered image export does not create orders or change selections',
+    (tester) async {
+      viewport(tester, 360, 740);
+      final capture = GlobalKey();
+      final selection = await start(
+        tester,
+        capture: capture,
+        admin: PreviewAdmin(),
+      );
+      final context = tester.element(find.byType(TattooCard).first);
+      final app = AppScope.of(context);
+      GoRouter.of(context).go('/admin/images');
+      await tester.pumpAndSettle();
+      expect(find.byType(CatalogScreen), findsOneWidget);
+      expect(find.text('اختيار'), findsNothing);
+      await tester.enterText(find.byType(TextField), 'ورود 1');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      await screenshot(tester, capture, 'admin-images');
+      await tester.tap(find.byKey(const ValueKey('export-catalog-images')));
+      for (
+        var i = 0;
+        i < 100 && find.byType(ShareScreen).evaluate().isEmpty;
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(ShareScreen), findsOneWidget);
+      expect(
+        tester.widget<ShareScreen>(find.byType(ShareScreen)).catalogExport,
+        isTrue,
+      );
+      expect(await app.orders.list(), isEmpty);
+      expect(selection.count, 0);
+      expect(selection.savedOrders, isEmpty);
+      expect(find.text('WhatsApp'), findsNothing);
+      expect(find.text('حفظ الصورة').hitTestable(), findsOneWidget);
+      await screenshot(tester, capture, 'admin-images-preview');
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       selection.dispose();
     },

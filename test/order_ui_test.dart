@@ -25,6 +25,9 @@ void main() {
       'Tajawal',
     )..addFont(rootBundle.load('assets/fonts/Tajawal-Regular.ttf'))).load();
     await (FontLoader(
+      'ElMessiri',
+    )..addFont(rootBundle.load('assets/fonts/ElMessiri-700.ttf'))).load();
+    await (FontLoader(
       'MaterialIcons',
     )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
   });
@@ -40,12 +43,13 @@ void main() {
       null,
     ),
   );
-  Future<AppServices> services() async {
+  Future<AppServices> services({bool loseManualResponse = false}) async {
     SharedPreferences.setMockInitialValues({});
     final catalog = MemoryCatalog(products: [fixture(1)]);
     final analytics = NoopAnalytics();
     return AppServices(
       catalog: catalog,
+      orders: loseManualResponse ? LostManualResponseRepository(catalog) : null,
       analytics: analytics,
       selection: SelectionStore(
         await SharedPreferences.getInstance(),
@@ -80,7 +84,7 @@ void main() {
     });
   }
 
-  testWidgets('employee confirms on mobile and the booking message is copied', (
+  testWidgets('employee creates and confirms a manual order on mobile', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -104,12 +108,40 @@ void main() {
       ),
     );
     final app = await services();
-    final token = newOrderToken();
-    final order = await app.orders.create(token, {'1': 2});
+    app.selection.toggle(fixture(1));
+    app.selection.setQuantity('1', 7);
     await tester.pumpWidget(
-      RepaintBoundary(child: wrap(app, OrderScreen(order: order))),
+      RepaintBoundary(
+        child: wrap(
+          app,
+          const Scaffold(body: OrderManagement(section: 'orders')),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة طلب يدوي'));
+    await tester.pumpAndSettle();
+    final createButton = find.widgetWithText(
+      FilledButton,
+      'إنشاء الطلب وإكمال البيانات',
+    );
+    expect(tester.widget<FilledButton>(createButton).onPressed, isNull);
+    await tester.tap(find.byTooltip('إضافة ${fixture(1).displayName}'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('quantity-1')), '0');
+    await tester.tap(createButton);
+    await tester.pumpAndSettle();
+    expect(find.text('أدخل كمية من 1 إلى 99'), findsOneWidget);
+    expect(await app.orders.list(), isEmpty);
+    await tester.enterText(find.byKey(const ValueKey('quantity-1')), '2');
+    await tester.pumpAndSettle();
+    await capture(tester, 'manual-order-mobile');
+    await tester.tap(createButton);
+    await tester.pumpAndSettle();
+    final order = (await app.orders.list()).single;
+    expect(order.pieces, 2);
+    expect(app.selection.quantity('1'), 7);
+    expect(app.selection.savedOrders, isEmpty);
     expect(find.text('رمز الوشم: ${fixture(1).code}'), findsOneWidget);
     await capture(tester, 'order-employee');
     Future<void> fill(String label, String text) async {
@@ -142,10 +174,7 @@ void main() {
     await tester.tap(confirm);
     await tester.pumpAndSettle();
     await capture(tester, 'order-confirmed');
-    expect(
-      (await app.orders.get(order.id, token: token)).status,
-      OrderStatus.confirmed,
-    );
+    expect((await app.orders.get(order.id)).status, OrderStatus.confirmed);
     expect(copied, contains(order.code));
     expect(copied, contains('10,000'));
     expect(copied, isNot(contains('خصم القطع:')));
@@ -153,8 +182,53 @@ void main() {
     expect(copied, isNot(contains('إجمالي الخصم:')));
     expect((await app.orders.get(order.id)).source, OrderSource.instagram);
     expect((await app.orders.get(order.id)).items.single.code, fixture(1).code);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('${order.code} • ${OrderStatus.confirmed.label}'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'manual order retry recovers a committed order without duplication',
+    (tester) async {
+      final app = await services(loseManualResponse: true);
+      await tester.pumpWidget(
+        wrap(app, const Scaffold(body: OrderManagement(section: 'orders'))),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('إضافة طلب يدوي'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'بحث باسم الوشم أو رمزه'),
+        fixture(1).code,
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('إضافة ${fixture(1).displayName}'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('إزالة ${fixture(1).displayName}'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('quantity-1')), findsNothing);
+      await tester.tap(find.byTooltip('إضافة ${fixture(1).displayName}'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('إنشاء الطلب وإكمال البيانات'));
+      await tester.pumpAndSettle();
+      expect((await app.orders.list()).length, 1);
+      expect(
+        tester
+            .widget<TextFormField>(find.byKey(const ValueKey('quantity-1')))
+            .enabled,
+        false,
+      );
+      await tester.tap(find.text('إعادة المحاولة'));
+      await tester.pumpAndSettle();
+      expect((await app.orders.list()).length, 1);
+      expect(find.byType(OrderScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'customers track orders without completion fields or confirmation',
     (tester) async {
@@ -234,4 +308,22 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+class LostManualResponseRepository extends MemoryOrderRepository {
+  LostManualResponseRepository(super.catalog);
+  bool lost = false;
+
+  @override
+  Future<TattooOrder> createManual(
+    String token,
+    Map<String, int> quantities,
+  ) async {
+    final order = await super.createManual(token, quantities);
+    if (!lost) {
+      lost = true;
+      throw StateError('Response lost after commit');
+    }
+    return order;
+  }
 }

@@ -10,6 +10,8 @@ abstract final class AppConfig {
   static const supabaseKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static const instagramUsername = 'ge.to.ge';
   static const instagramUrl = 'https://ig.me/m/$instagramUsername';
+  static const whatsappNumber = '9647778700244';
+  static const whatsappUrl = 'https://wa.me/$whatsappNumber';
   static const brand = 'G2G';
   // Optional bundled asset, shared by the header and generated images.
   static const logoAsset = String.fromEnvironment('LOGO_ASSET');

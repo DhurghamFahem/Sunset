@@ -42,6 +42,7 @@ class SelectionRenderer {
     List<Tattoo> products, {
     ValueChanged<double>? onProgress,
     String? orderCode,
+    bool showPrices = false,
     Map<String, int> quantities = const {},
   }) async {
     final batches = pages(products);
@@ -71,7 +72,7 @@ class SelectionRenderer {
       }
       _text(
         canvas,
-        'اختياراتي من G2G',
+        showPrices ? 'وشومات G2G • الأسعار للقطعة' : 'اختياراتي من G2G',
         const Rect.fromLTWH(60, 140, 1080, 80),
         size: 38,
         bold: true,
@@ -103,14 +104,26 @@ class SelectionRenderer {
         _image(
           canvas,
           image,
-          Rect.fromLTWH(x + 24, y + 20, cellWidth - 48, cellHeight - 138),
+          Rect.fromLTWH(
+            x + 24,
+            y + 20,
+            cellWidth - 48,
+            cellHeight - (showPrices ? 182 : 138),
+          ),
         );
         image.dispose();
         codec.dispose();
         _text(
           canvas,
-          product.displayName,
-          Rect.fromLTWH(x + 12, y + cellHeight - 112, cellWidth - 24, 46),
+          showPrices
+              ? '${product.displayName} • ${product.code}'
+              : product.displayName,
+          Rect.fromLTWH(
+            x + 12,
+            y + cellHeight - (showPrices ? 156 : 112),
+            cellWidth - 24,
+            46,
+          ),
           size: 29,
           bold: true,
         );
@@ -123,9 +136,25 @@ class SelectionRenderer {
                 'الكمية: ${quantities[product.id]}',
               if (product.dimensions.isNotEmpty) product.dimensions,
             ].join(' • '),
-            Rect.fromLTWH(x + 12, y + cellHeight - 67, cellWidth - 24, 40),
+            Rect.fromLTWH(
+              x + 12,
+              y + cellHeight - (showPrices ? 111 : 67),
+              cellWidth - 24,
+              40,
+            ),
             size: 25,
             latin: !quantities.containsKey(product.id),
+          );
+        }
+        if (showPrices) {
+          _text(
+            canvas,
+            product.price == null
+                ? 'السعر عند الاستفسار'
+                : product.formattedPrice,
+            Rect.fromLTWH(x + 12, y + cellHeight - 67, cellWidth - 24, 40),
+            size: 28,
+            bold: true,
           );
         }
         onProgress?.call(++done / products.length);

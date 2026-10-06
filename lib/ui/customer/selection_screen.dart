@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_scope.dart';
 import '../../config.dart';
+import '../../models/order.dart';
 import '../../services/selection_renderer.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -56,7 +57,17 @@ class _SelectionScreenState extends State<SelectionScreen> {
       if (!mounted) return;
       app.analytics.event('selection_exported');
       await Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute<void>(builder: (_) => ShareScreen(pages: pages)),
+        MaterialPageRoute<void>(
+          builder: (_) => ShareScreen(
+            pages: pages,
+            initialSource: order.source == OrderSource.whatsapp
+                ? OrderSource.whatsapp
+                : OrderSource.instagram,
+            onSourceChanged: (source) async {
+              await app.orders.setShareSource(order.id, token, source);
+            },
+          ),
+        ),
       );
     } catch (_) {
       if (mounted) {
@@ -336,7 +347,7 @@ class _SelectionScreenState extends State<SelectionScreen> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'الخطوة الجاية: إرسالها على Instagram.',
+                            'الخطوة الجاية: إرسالها على Instagram أو WhatsApp.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: muted, fontSize: 12),
                           ),

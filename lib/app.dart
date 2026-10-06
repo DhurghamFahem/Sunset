@@ -57,6 +57,10 @@ class _G2GAppState extends State<G2GApp> {
         ],
       ),
       GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
+      GoRoute(
+        path: '/admin/images',
+        builder: (_, _) => const AdminScreen(section: 'images'),
+      ),
       GoRoute(path: '/orders', builder: (_, _) => const CustomerOrdersScreen()),
       GoRoute(
         path: '/admin/orders',

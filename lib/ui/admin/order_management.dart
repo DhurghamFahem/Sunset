@@ -8,6 +8,7 @@ import '../../models/catalog.dart';
 import '../../models/order.dart';
 import '../order_screen.dart';
 import '../widgets/common.dart';
+import 'manual_order_screen.dart';
 
 class OrderManagement extends StatefulWidget {
   const OrderManagement({super.key, required this.section});
@@ -95,6 +96,21 @@ class _OrderManagementState extends State<OrderManagement> {
     if (saved == true && mounted) await load();
   }
 
+  Future<void> createManualOrder() async {
+    final order = await Navigator.push<TattooOrder>(
+      context,
+      MaterialPageRoute<TattooOrder>(builder: (_) => const ManualOrderScreen()),
+    );
+    if (!mounted) return;
+    if (order != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(builder: (_) => OrderScreen(order: order)),
+      );
+    }
+    if (mounted) await load();
+  }
+
   Future<void> saveDelivery() async {
     final amount = int.tryParse(delivery.text);
     if (amount == null || amount < 0 || amount > 100000000) {
@@ -145,6 +161,12 @@ class _OrderManagementState extends State<OrderManagement> {
                 ],
               ),
               const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: busy ? null : createManualOrder,
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('إضافة طلب يدوي'),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: search,
                 decoration: const InputDecoration(
@@ -177,7 +199,7 @@ class _OrderManagementState extends State<OrderManagement> {
               const SizedBox(height: 12),
               if (orders.isEmpty && !busy && error == null)
                 const Text(
-                  'لا توجد طلبات مطابقة. تظهر الطلبات هنا عند تجهيز صور الاختيارات.',
+                  'لا توجد طلبات مطابقة. أضف طلباً يدوياً أو انتظر اختيارات العملاء.',
                 ),
               for (final order in orders)
                 Card(

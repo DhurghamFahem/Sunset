@@ -17,6 +17,12 @@ String newOrderToken() {
 
 abstract class OrderRepository {
   Future<TattooOrder> create(String token, Map<String, int> quantities);
+  Future<TattooOrder> createManual(String token, Map<String, int> quantities);
+  Future<TattooOrder> setShareSource(
+    String id,
+    String token,
+    OrderSource source,
+  );
   Future<TattooOrder> get(String id, {String? token});
   Future<TattooOrder> save(TattooOrder order, Json changes, {String? token});
   Future<List<TattooOrder>> list({
@@ -59,6 +65,24 @@ class SupabaseOrderRepository implements OrderRepository {
             .map((e) => {'product_id': e.key, 'quantity': e.value})
             .toList(),
       });
+  @override
+  Future<TattooOrder> createManual(String token, Map<String, int> quantities) =>
+      _rpc('create_manual_order', {
+        'p_token': token,
+        'p_items': quantities.entries
+            .map((e) => {'product_id': e.key, 'quantity': e.value})
+            .toList(),
+      });
+  @override
+  Future<TattooOrder> setShareSource(
+    String id,
+    String token,
+    OrderSource source,
+  ) => _rpc('set_order_share_source', {
+    'p_id': id,
+    'p_token': token,
+    'p_source': source.name,
+  });
   @override
   Future<TattooOrder> get(String id, {String? token}) =>
       _rpc('get_selection_order', {'p_id': id, 'p_token': token});
@@ -134,6 +158,9 @@ class MemoryOrderRepository implements OrderRepository {
   final Map<String, Employee> _employees = {};
   int _delivery = 0;
   @override
+  Future<TattooOrder> createManual(String token, Map<String, int> quantities) =>
+      create(token, quantities);
+  @override
   Future<TattooOrder> create(String token, Map<String, int> quantities) async {
     if (_tokens[token] case final String id) return _orders[id]!;
     if (quantities.isEmpty ||
@@ -177,6 +204,30 @@ class MemoryOrderRepository implements OrderRepository {
     );
     _tokens[token] = order.id;
     return _orders[order.id] = order;
+  }
+
+  @override
+  Future<TattooOrder> setShareSource(
+    String id,
+    String token,
+    OrderSource source,
+  ) async {
+    await get(id, token: token);
+    final old = _orders[id]!;
+    if (![OrderSource.instagram, OrderSource.whatsapp].contains(source)) {
+      throw const OrderException('اختر Instagram أو WhatsApp');
+    }
+    if (old.status != OrderStatus.pending) {
+      throw const OrderException(
+        'تم تأكيد الطلب. تغيير المصدر متاح للموظفين فقط',
+      );
+    }
+    if (old.source == source) return old;
+    return _orders[id] = TattooOrder.fromJson({
+      ...old.toJson(),
+      'source': source.name,
+      'version': old.version + 1,
+    });
   }
 
   @override

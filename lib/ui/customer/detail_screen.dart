@@ -193,7 +193,7 @@ class _DetailScreenState extends State<DetailScreen> {
                                     SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        'عجبك التصميم؟ أضفه لاختياراتك وشاركنا صورته على Instagram.',
+                                        'عجبك التصميم؟ أضفه لاختياراتك وشاركنا صورته على Instagram أو WhatsApp.',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: forest,

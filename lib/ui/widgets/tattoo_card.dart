@@ -7,15 +7,16 @@ import '../theme.dart';
 import 'common.dart';
 
 class TattooCard extends StatelessWidget {
-  const TattooCard(this.product, {super.key});
+  const TattooCard(this.product, {super.key, this.readOnly = false});
   final Tattoo product;
+  final bool readOnly;
   @override
   Widget build(BuildContext context) {
     final selection = AppScope.of(context).selection;
     return ListenableBuilder(
       listenable: selection,
       builder: (context, _) {
-        final selected = selection.contains(product.id);
+        final selected = !readOnly && selection.contains(product.id);
         return AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           clipBehavior: Clip.antiAlias,
@@ -36,10 +37,12 @@ class TattooCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Semantics(
-                  button: true,
+                  button: !readOnly,
                   label: 'عرض ${product.displayName}',
                   child: InkWell(
-                    onTap: () => context.push('/tattoo/${product.id}'),
+                    onTap: readOnly
+                        ? null
+                        : () => context.push('/tattoo/${product.id}'),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -71,23 +74,24 @@ class TattooCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        PositionedDirectional(
-                          bottom: 10,
-                          end: 10,
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: paper.withValues(alpha: .9),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.north_west,
-                              size: 14,
-                              color: forest,
+                        if (!readOnly)
+                          PositionedDirectional(
+                            bottom: 10,
+                            end: 10,
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: paper.withValues(alpha: .9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.north_west,
+                                size: 14,
+                                color: forest,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -120,25 +124,26 @@ class TattooCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(44, 44),
-                    backgroundColor: selected ? forest : sage,
-                    foregroundColor: selected ? paper : forest,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              if (!readOnly)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(44, 44),
+                      backgroundColor: selected ? forest : sage,
+                      foregroundColor: selected ? paper : forest,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () => selection.toggle(product),
+                    icon: Icon(selected ? Icons.check : Icons.add, size: 17),
+                    label: Text(
+                      selected ? 'تم الاختيار' : 'اختيار',
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
-                  onPressed: () => selection.toggle(product),
-                  icon: Icon(selected ? Icons.check : Icons.add, size: 17),
-                  label: Text(
-                    selected ? 'تم الاختيار' : 'اختيار',
-                    style: const TextStyle(fontSize: 12),
-                  ),
                 ),
-              ),
             ],
           ),
         );

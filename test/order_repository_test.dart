@@ -21,6 +21,49 @@ void main() {
     'area': 'المنصور',
     'status': 'confirmed',
   };
+  test(
+    'sharing destination is capability restricted, pending only and idempotent',
+    () async {
+      final token = newOrderToken();
+      final order = await repo.create(token, {'1': 1});
+      await expectLater(
+        repo.setShareSource(order.id, newOrderToken(), OrderSource.whatsapp),
+        throwsA(isA<OrderException>()),
+      );
+      await expectLater(
+        repo.setShareSource(order.id, token, OrderSource.website),
+        throwsA(isA<OrderException>()),
+      );
+      final whatsapp = await repo.setShareSource(
+        order.id,
+        token,
+        OrderSource.whatsapp,
+      );
+      expect(whatsapp.source, OrderSource.whatsapp);
+      expect(whatsapp.version, order.version + 1);
+      expect(
+        (await repo.setShareSource(
+          order.id,
+          token,
+          OrderSource.whatsapp,
+        )).version,
+        whatsapp.version,
+      );
+      final instagram = await repo.setShareSource(
+        order.id,
+        token,
+        OrderSource.instagram,
+      );
+      expect(instagram.source, OrderSource.instagram);
+      await repo.save(instagram, details);
+      await expectLater(
+        repo.setShareSource(order.id, token, OrderSource.whatsapp),
+        throwsA(isA<OrderException>()),
+      );
+      final manual = await repo.createManual(newOrderToken(), {'1': 1});
+      expect(manual.source, OrderSource.instagram);
+    },
+  );
   test('concurrent retries share one order, unique codes, quantities, delivery snapshot', () async {
     await repo.setDeliveryCost(5000);
     final token = newOrderToken();

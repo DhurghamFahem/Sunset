@@ -62,6 +62,22 @@ void main() {
     File('${dir.path}/fixture-wide.png').writeAsBytesSync(bytes);
     File('${dir.path}/selection-six.png').writeAsBytesSync(pages.first);
     File('${dir.path}/selection-single.png').writeAsBytesSync(pages.last);
+    final priced = await renderer.render(
+      List.generate(
+        6,
+        (i) => fixture(
+          i,
+          price: i == 0
+              ? null
+              : i == 1
+              ? 0
+              : 5000,
+        ),
+      ),
+      showPrices: true,
+    );
+    File('${dir.path}/catalog-prices.png').writeAsBytesSync(priced.single);
+    expect(priced.single, isNot(orderedEquals(pages.first)));
   });
   test(
     'image failure fails export instead of silently sharing incomplete artwork',
