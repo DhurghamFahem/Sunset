@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -14,6 +15,7 @@ import 'package:sunset/models/order.dart';
 import 'package:sunset/repositories/test_catalog_repository.dart';
 import 'package:sunset/services/analytics.dart';
 import 'package:sunset/services/admin_service.dart';
+import 'package:sunset/services/share/share_service.dart';
 import 'package:sunset/ui/admin/admin_screen.dart';
 import 'package:sunset/state/selection_store.dart';
 import 'package:sunset/ui/customer/catalog_filter_sheet.dart';
@@ -22,6 +24,17 @@ import 'package:sunset/ui/customer/catalog_screen.dart';
 import 'package:sunset/ui/widgets/tattoo_card.dart';
 
 import 'support/fixtures.dart';
+
+class PendingSaveService extends ShareService {
+  final requests = <int>[];
+  late Completer<String> pending;
+  @override
+  Future<String> download(int index) {
+    requests.add(index);
+    pending = Completer<String>();
+    return pending.future;
+  }
+}
 
 class PreviewAdmin implements AdminService {
   @override
@@ -488,18 +501,41 @@ void main() {
           .buffer
           .asUint8List();
       final context = tester.element(find.byType(TattooCard).first);
+      final saveService = PendingSaveService();
       Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute<void>(
-          builder: (_) => ShareScreen(pages: [bytes, bytes]),
+          builder: (_) =>
+              ShareScreen(pages: [bytes, bytes], shareService: saveService),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.text('حفظ الصورة 1 / 2').hitTestable(), findsOneWidget);
+      for (final result in ['cancelled', 'failed', 'unsupported']) {
+        await tester.tap(find.byKey(const ValueKey('share-next')));
+        await tester.pump();
+        expect(
+          tester
+              .widget<FilledButton>(find.byKey(const ValueKey('share-next')))
+              .onPressed,
+          isNull,
+        );
+        expect(find.text('حفظ الصورة 1 / 2'), findsOneWidget);
+        saveService.pending.complete(result);
+        await tester.pumpAndSettle();
+        expect(find.text('حفظ الصورة 1 / 2'), findsOneWidget);
+        expect(find.text('افتح محادثتنا على Instagram'), findsNothing);
+        ScaffoldMessenger.of(tester.element(find.byType(ShareScreen)))
+            .hideCurrentSnackBar();
+        await tester.pumpAndSettle();
+      }
       await tester.tap(find.byKey(const ValueKey('share-next')));
+      saveService.pending.complete('confirmed');
       await tester.pumpAndSettle();
       expect(find.text('حفظ الصورة 2 / 2'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('share-next')));
+      saveService.pending.complete('requested');
       await tester.pumpAndSettle();
+      expect(saveService.requests, [0, 0, 0, 0, 1]);
       expect(
         find.text('افتح محادثتنا على Instagram').hitTestable(),
         findsOneWidget,

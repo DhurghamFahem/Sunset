@@ -18,23 +18,26 @@ class ShareScreen extends StatefulWidget {
     this.initialSource = OrderSource.instagram,
     this.onSourceChanged,
     this.exportNotice,
+    this.shareService,
   });
   final List<Uint8List> pages;
   final bool catalogExport;
   final OrderSource initialSource;
   final Future<void> Function(OrderSource)? onSourceChanged;
   final String? exportNotice;
+  final ShareService? shareService;
   @override
   State<ShareScreen> createState() => _ShareScreenState();
 }
 
 class _ShareScreenState extends State<ShareScreen> {
-  final service = ShareService();
+  late final service = widget.shareService ?? ShareService();
   final preview = PageController();
   final downloaded = <int>{};
   int current = 0;
   late OrderSource source = widget.initialSource;
   bool savingSource = false;
+  bool savingImage = false;
   bool canShare = false;
   bool get allDownloaded => downloaded.length == widget.pages.length;
 
@@ -51,9 +54,28 @@ class _ShareScreenState extends State<ShareScreen> {
     super.dispose();
   }
 
-  void download() {
-    service.download(current);
-    setState(() => downloaded.add(current));
+  Future<void> download() async {
+    if (savingImage) return;
+    final index = current;
+    setState(() => savingImage = true);
+    String result;
+    try {
+      // Call before any await so browser actions retain the tap's activation.
+      result = await service.download(index);
+    } catch (_) {
+      result = 'failed';
+    }
+    if (!mounted) return;
+    setState(() => savingImage = false);
+    if (result == 'cancelled') return;
+    if (result != 'confirmed' && result != 'requested') {
+      showNotice(
+        context,
+        'تعذر حفظ الصورة. افتح الموقع في Safari وحاول مرة ثانية.',
+      );
+      return;
+    }
+    setState(() => downloaded.add(index));
     final next = List.generate(
       widget.pages.length,
       (i) => i,
@@ -254,7 +276,7 @@ class _ShareScreenState extends State<ShareScreen> {
                       ],
                       FilledButton.icon(
                         key: const ValueKey('share-next'),
-                        onPressed: savingSource
+                        onPressed: savingSource || savingImage
                             ? null
                             : widget.catalogExport
                             ? download
@@ -282,7 +304,7 @@ class _ShareScreenState extends State<ShareScreen> {
                         ),
                       if (allDownloaded && !widget.catalogExport)
                         TextButton(
-                          onPressed: download,
+                          onPressed: savingImage ? null : download,
                           child: const Text('حفظ الصورة مرة ثانية'),
                         ),
                     ],
