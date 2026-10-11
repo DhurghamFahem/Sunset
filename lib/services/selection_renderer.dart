@@ -50,131 +50,168 @@ class SelectionRenderer {
     var done = 0;
     for (var page = 0; page < batches.length; page++) {
       final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
-      const width = 1200.0, height = 1680.0;
-      canvas.drawColor(const Color(0xFFF5EFE2), BlendMode.src);
-      if (AppConfig.logoAsset.isEmpty) {
+      final sources = <ui.Image>[];
+      ui.Picture? picture;
+      ui.Image? rendered;
+      try {
+        final canvas = Canvas(recorder);
+        const width = 1200.0, height = 1680.0;
+        canvas.drawColor(const Color(0xFFF5EFE2), BlendMode.src);
+        if (AppConfig.logoAsset.isEmpty) {
+          _text(
+            canvas,
+            AppConfig.brand,
+            const Rect.fromLTWH(60, 45, 1080, 80),
+            size: 62,
+            bold: true,
+            latin: true,
+          );
+        } else {
+          final data = await rootBundle.load(AppConfig.logoAsset);
+          final logo = await _decode(
+            data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+            const Size(260, 105),
+          );
+          sources.add(logo);
+          _image(canvas, logo, const Rect.fromLTWH(470, 30, 260, 105));
+        }
         _text(
           canvas,
-          AppConfig.brand,
-          const Rect.fromLTWH(60, 45, 1080, 80),
-          size: 62,
+          showPrices ? 'وشومات G2G • الأسعار للقطعة' : 'اختياراتي من G2G',
+          const Rect.fromLTWH(60, 140, 1080, 80),
+          size: 38,
           bold: true,
+        );
+        _text(
+          canvas,
+          '${orderCode == null ? '' : 'ORDER $orderCode    •    '}${page + 1} / ${batches.length}',
+          const Rect.fromLTWH(60, 213, 1080, 55),
+          size: 24,
           latin: true,
         );
-      } else {
-        final data = await rootBundle.load(AppConfig.logoAsset);
-        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-        final logo = (await codec.getNextFrame()).image;
-        _image(canvas, logo, const Rect.fromLTWH(470, 30, 260, 105));
-        logo.dispose();
-        codec.dispose();
-      }
-      _text(
-        canvas,
-        showPrices ? 'وشومات G2G • الأسعار للقطعة' : 'اختياراتي من G2G',
-        const Rect.fromLTWH(60, 140, 1080, 80),
-        size: 38,
-        bold: true,
-      );
-      _text(
-        canvas,
-        '${orderCode == null ? '' : 'ORDER $orderCode    •    '}${page + 1} / ${batches.length}',
-        const Rect.fromLTWH(60, 213, 1080, 55),
-        size: 24,
-        latin: true,
-      );
-      final batch = batches[page];
-      final single = batch.length == 1;
-      final rows = single ? 1 : (batch.length / 2).ceil();
-      final cellWidth = single ? 1080.0 : 520.0;
-      final cellHeight = 1220.0 / rows;
-      for (var i = 0; i < batch.length; i++) {
-        final product = batch[i];
-        final x = single ? 60.0 : (i.isEven ? 620.0 : 60.0);
-        final y = 290 + (single ? 0 : i ~/ 2) * cellHeight;
-        final card = Rect.fromLTWH(x, y, cellWidth, cellHeight - 20);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(card, const Radius.circular(18)),
-          Paint()..color = Colors.white,
-        );
-        final bytes = await _load(product.imageUrl);
-        final codec = await ui.instantiateImageCodec(bytes);
-        final image = (await codec.getNextFrame()).image;
-        _image(
-          canvas,
-          image,
-          Rect.fromLTWH(
+        final batch = batches[page];
+        final single = batch.length == 1;
+        final rows = single ? 1 : (batch.length / 2).ceil();
+        final cellWidth = single ? 1080.0 : 520.0;
+        final cellHeight = 1220.0 / rows;
+        for (var i = 0; i < batch.length; i++) {
+          final product = batch[i];
+          final x = single ? 60.0 : (i.isEven ? 620.0 : 60.0);
+          final y = 290 + (single ? 0 : i ~/ 2) * cellHeight;
+          final card = Rect.fromLTWH(x, y, cellWidth, cellHeight - 20);
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(card, const Radius.circular(18)),
+            Paint()..color = Colors.white,
+          );
+          final bytes = await _load(product.imageUrl);
+          final destination = Rect.fromLTWH(
             x + 24,
             y + 20,
             cellWidth - 48,
             cellHeight - (showPrices ? 182 : 138),
-          ),
-        );
-        image.dispose();
-        codec.dispose();
-        _text(
-          canvas,
-          showPrices
-              ? '${product.displayName} • ${product.code}'
-              : product.displayName,
-          Rect.fromLTWH(
-            x + 12,
-            y + cellHeight - (showPrices ? 156 : 112),
-            cellWidth - 24,
-            46,
-          ),
-          size: 29,
-          bold: true,
-        );
-        if (product.dimensions.isNotEmpty ||
-            quantities.containsKey(product.id)) {
+          );
+          final image = await _decode(bytes, destination.size);
+          sources.add(image);
+          _image(canvas, image, destination);
           _text(
             canvas,
-            [
-              if (quantities.containsKey(product.id))
-                'الكمية: ${quantities[product.id]}',
-              if (product.dimensions.isNotEmpty) product.dimensions,
-            ].join(' • '),
+            showPrices
+                ? '${product.displayName} • ${product.code}'
+                : product.displayName,
             Rect.fromLTWH(
               x + 12,
-              y + cellHeight - (showPrices ? 111 : 67),
+              y + cellHeight - (showPrices ? 156 : 112),
               cellWidth - 24,
-              40,
+              46,
             ),
-            size: 25,
-            latin: !quantities.containsKey(product.id),
-          );
-        }
-        if (showPrices) {
-          _text(
-            canvas,
-            product.price == null
-                ? 'السعر عند الاستفسار'
-                : product.formattedPrice,
-            Rect.fromLTWH(x + 12, y + cellHeight - 67, cellWidth - 24, 40),
-            size: 28,
+            size: 29,
             bold: true,
           );
+          if (product.dimensions.isNotEmpty ||
+              quantities.containsKey(product.id)) {
+            _text(
+              canvas,
+              [
+                if (quantities.containsKey(product.id))
+                  'الكمية: ${quantities[product.id]}',
+                if (product.dimensions.isNotEmpty) product.dimensions,
+              ].join(' • '),
+              Rect.fromLTWH(
+                x + 12,
+                y + cellHeight - (showPrices ? 111 : 67),
+                cellWidth - 24,
+                40,
+              ),
+              size: 25,
+              latin: !quantities.containsKey(product.id),
+            );
+          }
+          if (showPrices) {
+            _text(
+              canvas,
+              product.price == null
+                  ? 'السعر عند الاستفسار'
+                  : product.formattedPrice,
+              Rect.fromLTWH(x + 12, y + cellHeight - 67, cellWidth - 24, 40),
+              size: 28,
+              bold: true,
+            );
+          }
+          onProgress?.call(++done / products.length);
         }
-        onProgress?.call(++done / products.length);
+        _text(
+          canvas,
+          '@${AppConfig.instagramUsername}',
+          const Rect.fromLTWH(60, 1540, 1080, 65),
+          size: 30,
+          latin: true,
+        );
+        picture = recorder.endRecording();
+        rendered = await picture.toImage(width.toInt(), height.toInt());
+        final png = await rendered.toByteData(format: ui.ImageByteFormat.png);
+        if (png == null) throw StateError('Export failed');
+        output.add(
+          png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes),
+        );
+      } finally {
+        rendered?.dispose();
+        // Canvas recording does not rasterize immediately. Keep browser-backed
+        // sources alive through PNG encoding: disposing them after drawImageRect
+        // can release Safari's image/bitmap before CanvasKit reads its pixels.
+        if (recorder.isRecording) recorder.endRecording().dispose();
+        picture?.dispose();
+        for (final source in sources) {
+          source.dispose();
+        }
       }
-      _text(
-        canvas,
-        '@${AppConfig.instagramUsername}',
-        const Rect.fromLTWH(60, 1540, 1080, 65),
-        size: 30,
-        latin: true,
-      );
-      final picture = recorder.endRecording();
-      final image = await picture.toImage(width.toInt(), height.toInt());
-      final png = await image.toByteData(format: ui.ImageByteFormat.png);
-      image.dispose();
-      picture.dispose();
-      if (png == null) throw StateError('Export failed');
-      output.add(png.buffer.asUint8List());
     }
     return output;
+  }
+
+  Future<ui.Image> _decode(Uint8List bytes, Size destination) async {
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    // This API takes ownership of the buffer.
+    final codec = await ui.instantiateImageCodecWithSize(
+      buffer,
+      getTargetSize: (width, height) {
+        final fitted = applyBoxFit(
+          BoxFit.contain,
+          Size(width.toDouble(), height.toDouble()),
+          destination,
+        ).destination;
+        // Retain only the pixels needed by this page, without upscaling small
+        // originals. This bounds memory while the page's sources stay alive.
+        return ui.TargetImageSize(
+          width: fitted.width.ceil().clamp(1, width),
+          height: fitted.height.ceil().clamp(1, height),
+        );
+      },
+    );
+    try {
+      return (await codec.getNextFrame()).image;
+    } finally {
+      codec.dispose();
+    }
   }
 
   void _image(Canvas canvas, ui.Image image, Rect destination) {

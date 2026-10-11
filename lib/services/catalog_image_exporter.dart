@@ -58,7 +58,7 @@ class CatalogImageExporter {
     // Fingerprint every rendered field and its order, plus filters and branding.
     // Bump the layout version whenever rendering changes.
     final key = jsonEncode({
-      'layout': 1,
+      'layout': 2,
       'test': AppConfig.useTestData,
       'backend': AppConfig.supabaseUrl,
       'brand': AppConfig.brand,

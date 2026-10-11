@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sunset/models/catalog.dart';
@@ -43,6 +45,23 @@ class TestRenderer extends SelectionRenderer {
 }
 
 void main() {
+  test('exports from before the image lifetime fix are regenerated', () async {
+    final storage = TestStorage();
+    final renderer = TestRenderer();
+    final exporter = CatalogImageExporter(storage: storage, renderer: renderer);
+    final catalog = MemoryCatalog(products: [fixture(1)]);
+    await exporter.generate(catalog, const CatalogQuery());
+    final key = storage.values.keys.single;
+    final oldKey = jsonDecode(key) as Map<String, dynamic>;
+    oldKey['layout'] = 1;
+    final cached = storage.values.remove(key)!;
+    storage.values[jsonEncode(oldKey)] = cached;
+
+    final result = await exporter.generate(catalog, const CatalogQuery());
+    expect(result.reused, isFalse);
+    expect(renderer.renders, 2);
+  });
+
   test(
     'all filtered pages export and later sessions reuse unchanged images',
     () async {
