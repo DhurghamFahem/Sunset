@@ -48,14 +48,14 @@ function browser(navigator) {
   fallback.bridge.clear(); assert.equal(fallback.revoked.length, 1);
   for (const device of [
     {userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'},
-    {userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)'},
-    {userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', platform: 'MacIntel', maxTouchPoints: 5}
+    {userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) CriOS/130.0.0.0 Mobile Safari/604.1'},
+    {userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram'}
   ]) {
     const ios = browser(device);
     ios.bridge.prepare([new Uint8Array([1]), new Uint8Array([2])]);
     let completed = false;
     const saving = ios.bridge.download(1).then(result => { completed = true; return result; });
-    assert.equal(ios.clicks.length, 0, 'iOS must not use an anchor download');
+    assert.equal(ios.clicks.length, 0, 'iPhone must not use an anchor download');
     const dialog = ios.dialog;
     assert.equal(dialog.open, true, 'save view opens synchronously on the tap');
     const [, , image, confirm] = dialog.children;
@@ -87,9 +87,20 @@ function browser(navigator) {
     assert.equal(ios.dialog, undefined);
     assert.equal(ios.revoked.length, 2);
   }
-  const mac = browser({platform: 'MacIntel', maxTouchPoints: 0});
-  mac.bridge.prepare([new Uint8Array([1])]);
-  assert.equal(await mac.bridge.download(0), 'requested');
-  assert.equal(mac.dialog, undefined, 'desktop Mac retains normal downloads');
-  console.log('PASS: sharing, user activation, desktop downloads, iPhone/iPad save confirmation, cancellation, failed image loading, URL cleanup.');
+  for (const device of [
+    {userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/130.0.0.0 Mobile Safari/537.36'},
+    {userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36'},
+    {userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)'},
+    {userAgent: 'Mozilla/5.0 (iPod touch; CPU iPhone OS 18_0 like Mac OS X)'},
+    {userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', platform: 'MacIntel', maxTouchPoints: 5},
+    {platform: 'MacIntel', maxTouchPoints: 0}
+  ]) {
+    const direct = browser(device);
+    direct.bridge.prepare([new Uint8Array([1])]);
+    const saving = direct.bridge.download(0);
+    assert.deepEqual(direct.clicks, ['G2G-1.png'], 'download starts synchronously on the tap');
+    assert.equal(await saving, 'requested');
+    assert.equal(direct.dialog, undefined, 'non-iPhone browsers download without the save view');
+  }
+  console.log('PASS: sharing, user activation, direct downloads outside iPhone, iPhone save confirmation, cancellation, failed image loading, URL cleanup.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

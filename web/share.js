@@ -4,8 +4,10 @@
   let files = [];
   let urls = [];
   let closeSaveView;
-  const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIPhone = () => {
+    const userAgent = navigator.userAgent || '';
+    return /iPhone/i.test(userAgent) && !/iPad|iPod/i.test(userAgent);
+  };
   function clear() {
     closeSaveView?.('cancelled');
     urls.forEach(url => URL.revokeObjectURL(url));
@@ -15,7 +17,7 @@
   function showSaveView(index) {
     closeSaveView?.('cancelled');
     // Flutter's canvas preview has no native image long-press menu. Use a real
-    // <img> on iOS so Safari can offer Save Image / Add to Photos instead of
+    // <img> on iPhone so Safari can offer Save Image / Add to Photos instead of
     // relying on a blob download (which may save to Files or be ignored).
     return new Promise(resolve => {
       const dialog = document.createElement('dialog');
@@ -89,13 +91,11 @@
     },
     download(index) {
       if (!urls[index]) return Promise.resolve('failed');
-      if (isIOS()) return showSaveView(index);
+      if (isIPhone()) return showSaveView(index);
       try {
         const a = document.createElement('a');
         a.href = urls[index];
         a.download = files[index].name;
-        a.target = '_blank';
-        a.rel = 'noopener';
         document.body.appendChild(a);
         try { a.click(); } finally { a.remove(); }
         // This reports a request, not confirmation that the browser saved it.
