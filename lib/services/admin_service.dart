@@ -101,20 +101,28 @@ class AdminService implements CatalogAdmin {
   Future<UploadedImage?> pickAndUpload({bool category = false}) async {
     final image = await pickCatalogImage();
     if (image == null) return null;
-    final (:bytes, :thumbnail, :extension, :mime) = image;
+    final (
+      :bytes,
+      :thumbnail,
+      :extension,
+      :mime,
+      :thumbnailExtension,
+      :thumbnailMime,
+    ) = image;
     final path =
         '${client.auth.currentUser!.id}/${DateTime.now().microsecondsSinceEpoch}';
     final objects = <String, List<String>>{};
     try {
       final bucket = category ? 'category-images' : 'tattoo-images';
-      final object = category ? '$path.png' : '$path.$extension';
+      final thumbnailObject = '$path.$thumbnailExtension';
+      final object = category ? thumbnailObject : '$path.$extension';
       await client.storage
           .from(bucket)
           .uploadBinary(
             object,
             category ? thumbnail : bytes,
             fileOptions: FileOptions(
-              contentType: category ? 'image/png' : mime,
+              contentType: category ? thumbnailMime : mime,
               cacheControl: '31536000',
             ),
           );
@@ -124,17 +132,17 @@ class AdminService implements CatalogAdmin {
       await client.storage
           .from('tattoo-thumbnails')
           .uploadBinary(
-            '$path.png',
+            thumbnailObject,
             thumbnail,
-            fileOptions: const FileOptions(
-              contentType: 'image/png',
+            fileOptions: FileOptions(
+              contentType: thumbnailMime,
               cacheControl: '31536000',
             ),
           );
-      objects['tattoo-thumbnails'] = ['$path.png'];
+      objects['tattoo-thumbnails'] = [thumbnailObject];
       return UploadedImage(
         originalUrl,
-        client.storage.from('tattoo-thumbnails').getPublicUrl('$path.png'),
+        client.storage.from('tattoo-thumbnails').getPublicUrl(thumbnailObject),
         objects,
       );
     } catch (_) {
@@ -161,6 +169,8 @@ typedef PickedCatalogImage = ({
   Uint8List thumbnail,
   String extension,
   String mime,
+  String thumbnailExtension,
+  String thumbnailMime,
 });
 
 Future<PickedCatalogImage?> pickCatalogImage() async {
@@ -174,12 +184,20 @@ Future<PickedCatalogImage?> pickCatalogImage() async {
     throw CatalogInputException('اختار صورة أصغر من 10 ميغابايت.');
   }
   final bytes = await file.readAsBytes();
+  return prepareCatalogImage(bytes, extension: file.extension ?? '');
+}
+
+/// Creates a lightweight card preview while retaining the exact original bytes.
+PickedCatalogImage prepareCatalogImage(
+  Uint8List bytes, {
+  required String extension,
+}) {
   if (bytes.isEmpty || bytes.length > AppConfig.maxUploadBytes) {
     throw CatalogInputException(
       'اختار صورة PNG أو JPG أو WebP أصغر من 10 ميغابايت.',
     );
   }
-  final extension = (file.extension ?? '').toLowerCase();
+  extension = extension.toLowerCase();
   final String mime;
   if (bytes.length > 12 &&
       bytes[0] == 137 &&
@@ -212,18 +230,48 @@ Future<PickedCatalogImage?> pickCatalogImage() async {
   if (decoded == null) {
     throw CatalogInputException('ما قدرنا نفتح الصورة. جرّب ملف ثاني.');
   }
-  final thumbImage = decoded.width > 600 || decoded.height > 600
+  final oriented =
+      decoded.exif.imageIfd.hasOrientation &&
+          decoded.exif.imageIfd.orientation != 1
+      ? img.bakeOrientation(decoded)
+      : decoded;
+  const maxEdge = 480;
+  final thumbImage = oriented.width > maxEdge || oriented.height > maxEdge
       ? img.copyResize(
-          decoded,
-          width: decoded.width >= decoded.height ? 600 : null,
-          height: decoded.height > decoded.width ? 600 : null,
+          oriented,
+          width: oriented.width >= oriented.height
+              ? maxEdge
+              : (oriented.width * maxEdge / oriented.height).round().clamp(
+                  1,
+                  maxEdge,
+                ),
+          height: oriented.height >= oriented.width
+              ? maxEdge
+              : (oriented.height * maxEdge / oriented.width).round().clamp(
+                  1,
+                  maxEdge,
+                ),
           interpolation: img.Interpolation.average,
         )
-      : decoded;
-  // PNG retains transparency; full original tattoo bytes are never transformed.
-  final thumbnail = Uint8List.fromList(img.encodePng(thumbImage));
+      : oriented;
+  // Opaque photos compress much better as JPEG. Keep alpha for tattoo cutouts.
+  final transparent = thumbImage.any(
+    (pixel) => pixel.a < pixel.maxChannelValue,
+  );
+  final thumbnail = Uint8List.fromList(
+    transparent
+        ? img.encodePng(thumbImage, level: 9)
+        : img.encodeJpg(thumbImage, quality: 78, chroma: img.JpegChroma.yuv420),
+  );
   if (thumbnail.length > 2097152) {
     throw CatalogInputException('الصورة معقدة جداً. جرّب صورة أصغر.');
   }
-  return (bytes: bytes, thumbnail: thumbnail, extension: extension, mime: mime);
+  return (
+    bytes: bytes,
+    thumbnail: thumbnail,
+    extension: extension,
+    mime: mime,
+    thumbnailExtension: transparent ? 'png' : 'jpg',
+    thumbnailMime: transparent ? 'image/png' : 'image/jpeg',
+  );
 }

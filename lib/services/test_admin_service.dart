@@ -59,7 +59,7 @@ class TestAdminService implements CatalogAdmin {
     _requireAdmin();
     final thumbnail = Uri.dataFromBytes(
       image.thumbnail,
-      mimeType: 'image/png',
+      mimeType: image.thumbnailMime,
     ).toString();
     final original = category
         ? thumbnail
