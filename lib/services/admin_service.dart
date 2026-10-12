@@ -75,7 +75,7 @@ class AdminService implements CatalogAdmin {
       }
     } on PostgrestException catch (e) {
       if (e.code == '23505') {
-        throw CatalogInputException('رقم التصميم مستخدم. اختار رقم ثاني.');
+        throw CatalogInputException('كود الوشم مستخدم. اختار كود ثاني.');
       }
       throw CatalogInputException(
         'ما قدرنا نحفظ. تأكد من البيانات واتصالك وحاول مرة ثانية.',

@@ -11,6 +11,48 @@ import 'package:sunset/services/test_admin_service.dart';
 import 'package:sunset/ui/customer/catalog_screen.dart';
 
 void main() {
+  test(
+    'tattoo codes are unique on creation and editing, including hidden tattoos',
+    () async {
+      final catalog = TestCatalogRepository();
+      final admin = TestAdminService(catalog);
+      addTearDown(admin.dispose);
+      await admin.signIn('test@gmail.com', '1234');
+      final first = (await catalog.product('test-tattoo-001'))!;
+      final second = (await catalog.product('test-tattoo-002'))!;
+      const code = 'ABC-001 / وشم ★';
+      await admin.save('products', {
+        ...first.toJson(),
+        'code': code,
+        'active': false,
+      }, id: first.id);
+      final duplicate = throwsA(
+        isA<CatalogInputException>().having(
+          (error) => error.message,
+          'message',
+          'كود الوشم مستخدم. اختار كود ثاني.',
+        ),
+      );
+      await expectLater(
+        admin.save('products', {...second.toJson(), 'code': code}),
+        duplicate,
+      );
+      await expectLater(
+        admin.save('products', {
+          ...second.toJson(),
+          'code': code,
+        }, id: second.id),
+        duplicate,
+      );
+      expect((await catalog.product(second.id))!.code, second.code);
+      await admin.save('products', {
+        ...first.toJson(),
+        'code': code,
+      }, id: first.id);
+      expect((await catalog.product(first.id))!.code, code);
+    },
+  );
+
   test('credentials, logout, and writes require a demo session', () async {
     final catalog = TestCatalogRepository();
     final admin = TestAdminService(catalog);

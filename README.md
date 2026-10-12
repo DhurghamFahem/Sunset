@@ -51,7 +51,7 @@ The legacy name `SUPABASE_ANON_KEY` accepts either an anon key or the newer publ
 
 ## Database, RLS, and Storage
 
-On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610040001_free_form_product_codes.sql` and `202610040002_numeric_product_codes.sql` for numeric product codes, before using this version with Supabase. Product codes accept one or more digits (0–9), preserve leading zeros, and must be unique. Existing codes are preserved, but must be changed to digits when updating a legacy product. Alternatively link a project and apply migrations using the Supabase CLI:
+On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610120001_optional_tattoo_names.sql`, before using this version with Supabase. Tattoo codes are required, accept letters, numbers, symbols, and mixed text, preserve leading zeros, and must be unique. Empty or whitespace-only codes are rejected. Tattoo names are optional; unnamed tattoos display the neutral label **وشم عشبي**. Alternatively link a project and apply migrations using the Supabase CLI:
 
 ```sh
 npx supabase login

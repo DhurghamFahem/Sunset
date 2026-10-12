@@ -429,16 +429,14 @@ class _CatalogEditorState extends State<CatalogEditor> {
                         TextFormField(
                           controller: code,
                           textDirection: TextDirection.ltr,
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.text,
                           decoration: const InputDecoration(
-                            labelText: 'كود الوشم (للإدارة)',
-                            hintText: '001',
+                            labelText: 'كود الوشم (للإدارة، مطلوب)',
+                            hintText: 'ABC-001 / وشم ★',
                           ),
-                          validator: (value) =>
-                              (value ?? '').isNotEmpty &&
-                                  !RegExp(r'[^0-9]').hasMatch(value!)
-                              ? null
-                              : 'أدخل أرقام فقط (0-9)',
+                          validator: (value) => (value?.trim().isEmpty ?? true)
+                              ? 'أدخل كود الوشم'
+                              : null,
                         ),
                         const SizedBox(height: 14),
                       ],
@@ -448,12 +446,11 @@ class _CatalogEditorState extends State<CatalogEditor> {
                         decoration: InputDecoration(
                           labelText: widget.isCategory
                               ? 'اسم التصنيف بالعربي'
-                              : 'اسم الوشم الظاهر للزبون',
+                              : 'اسم الوشم الظاهر للزبون (اختياري)',
                         ),
-                        validator: (v) => (v?.trim().isEmpty ?? true)
-                            ? (widget.isCategory
-                                  ? 'أدخل اسم التصنيف'
-                                  : 'أدخل اسم الوشم')
+                        validator: (v) =>
+                            widget.isCategory && (v?.trim().isEmpty ?? true)
+                            ? 'أدخل اسم التصنيف'
                             : null,
                       ),
                       if (!widget.isCategory) ...[

@@ -16,13 +16,13 @@ begin
   if exists(select 1 from public.catalog_products where id = saved and search_text like '%88881%') then raise exception 'Customer search includes internal code'; end if;
   if not exists(select 1 from public.catalog_products where id = saved and admin_search_text like '%88881%') then raise exception 'Admin code search failed'; end if;
   foreach bad in array array[
-    '{"name_ar":" "}'::jsonb, '{"width_cm":null}'::jsonb, '{"height_cm":null}'::jsonb,
+    '{"width_cm":null}'::jsonb, '{"height_cm":null}'::jsonb,
     '{"width_cm":0}'::jsonb, '{"tags":[null]}'::jsonb, '{"tags":[" "]}'::jsonb,
     '{"tags":{}}'::jsonb, '{"tags":[42]}'::jsonb
   ] loop
     begin
       perform public.save_catalog_product(payload || bad, saved);
-      raise exception 'Invalid name/size/tags accepted: %', bad;
+      raise exception 'Invalid size/tags accepted: %', bad;
     exception when check_violation then null; end;
   end loop;
   perform public.save_catalog_product(payload - 'tags', saved);
@@ -40,4 +40,4 @@ do $$ begin
 end $$;
 reset role;
 rollback;
-select 'PASS: required names, exact sizes, public size visibility, normalized tags, atomic validation, admin code search' as result;
+select 'PASS: exact sizes, public size visibility, normalized tags, atomic validation, admin code search' as result;

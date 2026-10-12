@@ -29,7 +29,7 @@ class TestCatalogRepository implements CatalogRepository {
     } else if (table == 'products') {
       final record = Tattoo.fromJson({...data, 'id': recordId});
       if (_products.any((p) => p.id != recordId && p.code == record.code)) {
-        throw CatalogInputException('رقم التصميم مستخدم. اختار رقم ثاني.');
+        throw CatalogInputException('كود الوشم مستخدم. اختار كود ثاني.');
       }
       if (record.categoryIds.isEmpty ||
           record.categoryIds.any(

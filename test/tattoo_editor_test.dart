@@ -95,7 +95,7 @@ void main() {
     (tester) async {
       final admin = await openEditor(tester);
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'كود الوشم (للإدارة)'),
+        find.widgetWithText(TextFormField, 'كود الوشم (للإدارة، مطلوب)'),
         '001234',
       );
       for (final label in [
@@ -133,22 +133,47 @@ void main() {
     },
   );
 
-  testWidgets('product codes require digits and preserve leading zeros', (
+  testWidgets('product codes reject empty and whitespace-only input', (
     tester,
   ) async {
     final admin = await openEditor(tester);
-    final field = find.widgetWithText(TextFormField, 'كود الوشم (للإدارة)');
-    for (final value in ['', 'abc', '12+', '1 2', '١٢']) {
+    final field = find.widgetWithText(
+      TextFormField,
+      'كود الوشم (للإدارة، مطلوب)',
+    );
+    for (final value in ['', '   ', '\t']) {
       await tester.enterText(field, value);
       await tapVisible(tester, find.text('حفظ'));
       expect(admin.saved, isNull, reason: 'Rejected code: $value');
-      expect(find.text('أدخل أرقام فقط (0-9)'), findsOneWidget);
+      expect(find.text('أدخل كود الوشم'), findsOneWidget);
     }
     await tester.enterText(field, '0');
     await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
     expect(admin.saved!['code'], '0');
     await tester.pumpWidget(const SizedBox());
   });
+
+  for (final value in ['ABC', '001234', '12+', '1 2', '١٢', 'وشم ★ / #@!']) {
+    testWidgets('product code accepts and preserves $value', (tester) async {
+      final admin = await openEditor(tester);
+      final field = find.widgetWithText(
+        TextFormField,
+        'كود الوشم (للإدارة، مطلوب)',
+      );
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(of: field, matching: find.byType(TextField)),
+            )
+            .keyboardType,
+        TextInputType.text,
+      );
+      await tester.enterText(field, value);
+      await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
+      expect(admin.saved!['code'], value);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 
   testWidgets('editor rejects empty audiences, placements, and categories', (
     tester,
@@ -238,24 +263,31 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('customer name and exact dimensions are required', (
-    tester,
-  ) async {
-    final admin = await openEditor(tester);
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'اسم الوشم الظاهر للزبون'),
-      '',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'العرض (سم)'),
-      '',
-    );
-    await tapVisible(tester, find.text('حفظ'));
-    expect(admin.saved, isNull);
-    expect(find.text('أدخل اسم الوشم'), findsOneWidget);
-    expect(find.text('أدخل القياس بالسنتيمتر'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'tattoo name is optional while exact dimensions remain required',
+    (tester) async {
+      final admin = await openEditor(tester);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'اسم الوشم الظاهر للزبون (اختياري)'),
+        '',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'العرض (سم)'),
+        '',
+      );
+      await tapVisible(tester, find.text('حفظ'));
+      expect(admin.saved, isNull);
+      expect(find.text('أدخل اسم الوشم'), findsNothing);
+      expect(find.text('أدخل القياس بالسنتيمتر'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'العرض (سم)'),
+        '3',
+      );
+      await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
+      expect(admin.saved!['name_ar'], isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('editor normalizes duplicate tags before saving', (tester) async {
     final admin = await openEditor(tester);
