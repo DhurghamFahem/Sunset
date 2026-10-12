@@ -21,6 +21,20 @@ void main() {
     'area': 'المنصور',
     'status': 'confirmed',
   };
+  test('unnamed order items display codes while preserving snapshots', () {
+    for (final name in [null, '', '  \t\n']) {
+      final item = OrderItem.fromJson({
+        'product_id': '1',
+        'name': name,
+        'code': '001-A',
+        'quantity': 1,
+        'original_price': 5000,
+        'unit_price': 5000,
+      });
+      expect(item.displayName, '001-A');
+      expect(item.toJson()['name'], name);
+    }
+  });
   test(
     'sharing destination is capability restricted, pending only and idempotent',
     () async {

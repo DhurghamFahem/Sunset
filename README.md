@@ -51,7 +51,7 @@ The legacy name `SUPABASE_ANON_KEY` accepts either an anon key or the newer publ
 
 ## Database, RLS, and Storage
 
-On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610120001_optional_tattoo_names.sql`, before using this version with Supabase. Tattoo codes are required, accept letters, numbers, symbols, and mixed text, preserve leading zeros, and must be unique. Empty or whitespace-only codes are rejected. Tattoo names are optional; unnamed tattoos display the neutral label **وشم عشبي**. Alternatively link a project and apply migrations using the Supabase CLI:
+On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610120001_optional_tattoo_names.sql` and `202610120002_tattoo_code_name_fallback.sql`, before using this version with Supabase. Tattoo codes are required, accept letters, numbers, symbols, and mixed text, preserve leading zeros, and must be unique. Empty or whitespace-only codes are rejected. Tattoo names are optional; tattoos with null, empty, or whitespace-only names display their code throughout the app and generated images. Alternatively link a project and apply migrations using the Supabase CLI:
 
 ```sh
 npx supabase login

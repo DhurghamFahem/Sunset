@@ -33,7 +33,12 @@ void main() {
       'code': 'INTERNAL',
       'image_url': 'image',
     });
-    expect(old.displayName, 'وشم عشبي');
+    expect(old.displayName, 'INTERNAL');
+    for (final name in [null, '', '  \t\n']) {
+      final unnamed = Tattoo.fromJson({...old.toJson(), 'name_ar': name});
+      expect(unnamed.displayName, 'INTERNAL');
+      expect(unnamed.toJson()['name_ar'], name);
+    }
     expect(old.tags, isEmpty);
     const current = Tattoo(
       id: 'new',

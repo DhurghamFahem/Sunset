@@ -167,7 +167,9 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${product.displayName} • ${product.code}',
+                                  product.displayName == product.code
+                                      ? product.code
+                                      : '${product.displayName} • ${product.code}',
                                 ),
                               ),
                               IconButton(
@@ -185,7 +187,8 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                           TextFormField(
                             key: ValueKey('quantity-${product.id}'),
                             initialValue: '${quantities[product.id]}',
-                            autovalidateMode: AutovalidateMode.onUserInteraction,
+                            autovalidateMode:
+                                AutovalidateMode.onUserInteraction,
                             enabled: !locked,
                             decoration: const InputDecoration(
                               labelText: 'الكمية (1–99)',

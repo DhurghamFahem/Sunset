@@ -98,7 +98,7 @@ class Tattoo {
   final String? name, thumbnailUrl;
   final List<String> tags;
   String get displayName =>
-      name?.trim().isNotEmpty == true ? name!.trim() : 'وشم عشبي';
+      name?.trim().isNotEmpty == true ? name!.trim() : code;
   TattooSize? get size =>
       width == null || height == null ? null : TattooSize(width!, height!);
   final List<TattooImage> additionalImages;

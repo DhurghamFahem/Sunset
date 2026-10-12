@@ -274,7 +274,7 @@ class _OrderScreenState extends State<OrderScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            order.items[n].name,
+                            order.items[n].displayName,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           if (staff && order.items[n].code.isNotEmpty)

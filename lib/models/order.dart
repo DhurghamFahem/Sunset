@@ -53,7 +53,10 @@ class OrderItem {
     required this.unitPrice,
     this.acceptedQuantity = 0,
   });
-  final String productId, name, code;
+  final String productId, code;
+  final String? name;
+  String get displayName =>
+      name?.trim().isNotEmpty == true ? name!.trim() : code;
   final int quantity, acceptedQuantity;
   final int? originalPrice, unitPrice;
   factory OrderItem.fromJson(Json j) => OrderItem(
@@ -175,7 +178,7 @@ class TattooOrder {
     '',
     ...items.map(
       (i) =>
-          '${i.name}${i.quantity > 1 ? ' × ${i.quantity}' : ''}\n'
+          '${i.displayName}${i.quantity > 1 ? ' × ${i.quantity}' : ''}\n'
           '${i.quantity > 1 ? 'سعر القطعة' : 'السعر'}: ${AppConfig.money(i.originalPrice ?? 0)}'
           '${i.originalPrice != i.unitPrice ? ' ← ${AppConfig.money(i.unitPrice ?? 0)}' : ''}'
           '${i.quantity > 1 ? ' | المجموع: ${AppConfig.money((i.unitPrice ?? 0) * i.quantity)}' : ''}',

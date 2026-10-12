@@ -115,7 +115,7 @@ class SelectionRenderer {
           _image(canvas, image, destination);
           _text(
             canvas,
-            showPrices
+            showPrices && product.displayName != product.code
                 ? '${product.displayName} • ${product.code}'
                 : product.displayName,
             Rect.fromLTWH(
