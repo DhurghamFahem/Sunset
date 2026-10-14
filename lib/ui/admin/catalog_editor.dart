@@ -30,6 +30,9 @@ class CatalogEditor extends StatefulWidget {
 
 class _CatalogEditorState extends State<CatalogEditor> {
   final form = GlobalKey<FormState>();
+  final tagField = GlobalKey<FormFieldState<String>>();
+  final tagFocus = FocusNode();
+  late List<String> selectedTags;
   late final TextEditingController name,
       code,
       width,
@@ -38,11 +41,13 @@ class _CatalogEditorState extends State<CatalogEditor> {
       order,
       tags;
   late bool active, featured, isNew;
-  String? categoryImageUrl, editingId, error;
+  String? categoryImageUrl, categoryThumbnailUrl, editingId, error;
   late List<TattooImage> images;
   String? get imageUrl =>
       widget.isCategory ? categoryImageUrl : images.firstOrNull?.url;
-  String? get thumbnailUrl => images.firstOrNull?.thumbnailUrl;
+  String? get thumbnailUrl => widget.isCategory
+      ? categoryThumbnailUrl
+      : images.firstOrNull?.thumbnailUrl;
   late Set<String> categoryIds;
   late Set<TattooAudience> audiences;
   late Set<BodyPlacement> bodyPlacements;
@@ -55,7 +60,8 @@ class _CatalogEditorState extends State<CatalogEditor> {
     editingId = widget.isCategory ? c?.id : p?.id;
     name = TextEditingController(text: widget.isCategory ? c?.name : p?.name);
     code = TextEditingController(text: p?.code);
-    tags = TextEditingController(text: p?.tags.join('، ') ?? '');
+    tags = TextEditingController();
+    selectedTags = List.of(p?.tags ?? []);
     width = TextEditingController(text: p?.width?.toString() ?? '');
     height = TextEditingController(text: p?.height?.toString() ?? '');
     price = TextEditingController(text: p?.price?.toString() ?? '');
@@ -69,11 +75,13 @@ class _CatalogEditorState extends State<CatalogEditor> {
     audiences = p?.audiences.toSet() ?? {};
     bodyPlacements = p?.bodyPlacements.toSet() ?? {};
     categoryImageUrl = c?.imageUrl;
+    categoryThumbnailUrl = c?.thumbnailUrl;
     images = p?.images.toList() ?? [];
   }
 
   @override
   void dispose() {
+    tagFocus.dispose();
     for (final c in [name, code, width, height, price, order, tags]) {
       c.dispose();
     }
@@ -111,6 +119,7 @@ class _CatalogEditorState extends State<CatalogEditor> {
         staged[result.imageUrl] = result;
         if (widget.isCategory) {
           categoryImageUrl = result.imageUrl;
+          categoryThumbnailUrl = result.thumbnailUrl;
         } else {
           images.add(
             TattooImage(
@@ -144,6 +153,57 @@ class _CatalogEditorState extends State<CatalogEditor> {
     if (upload != null) unawaited(widget.admin.discard(upload.objects));
   }
 
+  List<String> get pendingTags {
+    final value = tags.text.trim().replaceFirst(RegExp(r'^#+'), '').trim();
+    final seen = <String>{};
+    return [
+      ...selectedTags,
+      if (value.isNotEmpty) value,
+    ].where((tag) => seen.add(normalizeCatalogSearch(tag))).toList();
+  }
+
+  void addTag() {
+    if (busy || uploading || !(tagField.currentState?.validate() ?? false)) {
+      return;
+    }
+    setState(() {
+      selectedTags = pendingTags;
+      tags.clear();
+    });
+    tagFocus.requestFocus();
+  }
+
+  Future<void> deleteTattoo() async {
+    if (busy || uploading || editingId == null) return;
+    if (!await confirm(
+      context,
+      'حذف الوشم؟',
+      'سيتم حذف ${widget.product!.displayName} من الكتالوج نهائياً. الطلبات السابقة تبقى محفوظة.',
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.admin.deleteTattoo(editingId!);
+      await widget.onSaved();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          error = e is CatalogInputException
+              ? e.message
+              : 'تعذر حذف الوشم. حاول مرة ثانية.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> save({bool another = false}) async {
     if (!form.currentState!.validate()) return;
     if (!widget.isCategory && imageUrl == null) {
@@ -160,17 +220,17 @@ class _CatalogEditorState extends State<CatalogEditor> {
       final Json data = {
         'name_ar': name.text.trim().isEmpty ? null : name.text.trim(),
         'image_url': imageUrl,
+        'thumbnail_url': thumbnailUrl,
         'active': active,
         'sort_order': int.parse(order.text),
       };
       if (!widget.isCategory) {
         data.addAll({
           'code': code.text,
-          'tags': parseCatalogTags(tags.text),
+          'tags': pendingTags,
           'category_ids': categoryIds.toList(),
           'audiences': audiences.map((value) => value.name).toList(),
           'body_placements': bodyPlacements.map((value) => value.name).toList(),
-          'thumbnail_url': thumbnailUrl,
           'additional_images': images
               .skip(1)
               .map((image) => image.toJson())
@@ -196,8 +256,10 @@ class _CatalogEditorState extends State<CatalogEditor> {
           code.clear();
           name.clear();
           tags.clear();
+          selectedTags.clear();
           images.clear();
           categoryImageUrl = null;
+          categoryThumbnailUrl = null;
           active = true;
           featured = false;
           isNew = false;
@@ -348,7 +410,10 @@ class _CatalogEditorState extends State<CatalogEditor> {
                       if (widget.isCategory && imageUrl != null)
                         SizedBox(
                           height: 150,
-                          child: CatalogImage(imageUrl, label: 'معاينة الصورة'),
+                          child: CatalogImage(
+                            thumbnailUrl ?? imageUrl,
+                            label: 'معاينة الصورة',
+                          ),
                         ),
                       if (!widget.isCategory && images.isNotEmpty) ...[
                         const Text(
@@ -470,22 +535,51 @@ class _CatalogEditorState extends State<CatalogEditor> {
                         if (widget.categories.isEmpty)
                           const Text('أضف تصنيف أولاً حتى تقدر تحفظ الوشم.'),
                         TextFormField(
+                          key: tagField,
                           controller: tags,
-                          minLines: 1,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
+                          focusNode: tagFocus,
+                          enabled: !busy && !uploading,
+                          textInputAction: TextInputAction.done,
+                          onEditingComplete: () {},
+                          onFieldSubmitted: (_) => addTag(),
+                          decoration: InputDecoration(
                             labelText: 'وسوم البحث',
-                            hintText: 'وردة، ناعم، طبيعة، floral',
-                            helperText: 'افصل الوسوم بفاصلة. أضف مرادفات وكلمات عربي وإنكليزي.',
+                            hintText: 'اكتب وسم ثم اضغط Enter',
+                            helperText: 'اضغط Enter لإضافة كل وسم. تقدر تضيف كلمات عربي وإنكليزي.',
                             helperMaxLines: 2,
+                            suffixIcon: IconButton(
+                              tooltip: 'إضافة وسم',
+                              onPressed: busy || uploading ? null : addTag,
+                              icon: const Icon(Icons.add),
+                            ),
                           ),
                           validator: (value) {
-                            final parsed = parseCatalogTags(value ?? '');
-                            return parsed.length > 30 ||
-                                    parsed.any((tag) => tag.runes.length > 64)
+                            if ((value?.trim().isNotEmpty ?? false) &&
+                                normalizeCatalogSearch(value!).isEmpty) {
+                              return 'أدخل وسم يحتوي حروف أو أرقام';
+                            }
+                            return pendingTags.length > 30 ||
+                                    pendingTags.any(
+                                      (tag) => tag.runes.length > 64,
+                                    )
                                 ? 'حتى 30 وسم، وكل وسم بحد أقصى 64 حرف'
                                 : null;
                           },
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final tag in selectedTags)
+                              InputChip(
+                                label: Text(tag),
+                                onDeleted: busy || uploading
+                                    ? null
+                                    : () => setState(
+                                        () => selectedTags.remove(tag),
+                                      ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 14),
                         _section('04', 'القياس والسعر'),
@@ -609,6 +703,15 @@ class _CatalogEditorState extends State<CatalogEditor> {
                             ? null
                             : () => save(another: true),
                         child: const Text('حفظ وإضافة وشم آخر'),
+                      ),
+                    if (!widget.isCategory && editingId != null)
+                      TextButton.icon(
+                        onPressed: busy || uploading ? null : deleteTattoo,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('حذف الوشم'),
                       ),
                   ],
                 ),

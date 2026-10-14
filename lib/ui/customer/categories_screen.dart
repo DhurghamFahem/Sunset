@@ -91,7 +91,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: CatalogImage(
-                                    c.imageUrl,
+                                    c.thumbnail,
                                     label: c.name,
                                   ),
                                 ),

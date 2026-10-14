@@ -18,7 +18,7 @@ class CustomerShell extends StatelessWidget {
       builder: (context, _) => Scaffold(
         appBar: AppBar(
           toolbarHeight: MediaQuery.sizeOf(context).width < 600 ? 64 : 84,
-          titleSpacing: 20,
+          titleSpacing: MediaQuery.sizeOf(context).width < 600 ? 8 : 20,
           leading: path == '/'
               ? null
               : IconButton(
@@ -46,6 +46,14 @@ class CustomerShell extends StatelessWidget {
             ),
           ),
           actions: [
+            IconButton(
+              tooltip: 'العروض',
+              onPressed: () => context.push('/offers'),
+              style: IconButton.styleFrom(
+                backgroundColor: path == '/offers' ? sage : null,
+              ),
+              icon: const Icon(Icons.local_offer_outlined, size: 21),
+            ),
             IconButton(
               tooltip: 'طلباتي',
               onPressed: () => context.push('/orders'),

@@ -6,12 +6,23 @@ import 'package:sunset/models/catalog.dart';
 import 'package:sunset/services/admin_service.dart';
 import 'package:sunset/ui/admin/catalog_editor.dart';
 import 'package:sunset/ui/theme.dart';
+import 'package:sunset/ui/widgets/common.dart';
 
 class RecordingAdmin implements AdminService {
   final uploads = <UploadedImage>[];
   final discarded = <String>[];
   Json? saved;
   String? savedId;
+  final deleted = <String>[];
+  bool failDelete = false;
+  @override
+  Future<void> deleteTattoo(String id) async {
+    if (failDelete) {
+      throw CatalogInputException('تعذر حذف الوشم. حاول مرة ثانية.');
+    }
+    deleted.add(id);
+  }
+
   @override
   Future<void> save(String table, Json data, {String? id}) async {
     saved = data;
@@ -53,7 +64,10 @@ void main() {
     audiences: [TattooAudience.men, TattooAudience.women],
     bodyPlacements: [BodyPlacement.arm, BodyPlacement.back],
   );
-  Future<RecordingAdmin> openEditor(WidgetTester tester) async {
+  Future<RecordingAdmin> openEditor(
+    WidgetTester tester, {
+    Category? category,
+  }) async {
     tester.view.physicalSize = const Size(390, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -65,20 +79,31 @@ void main() {
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: Scaffold(
-          body: CatalogEditor(
-            admin: admin,
-            isCategory: false,
-            product: product,
-            categories: const [
-              Category(id: 'flowers', name: 'ورود'),
-              Category(id: 'minimal', name: 'بسيط'),
-            ],
-            onSaved: () async {},
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => CatalogEditor(
+                  admin: admin,
+                  isCategory: category != null,
+                  category: category,
+                  product: category == null ? product : null,
+                  categories: const [
+                    Category(id: 'flowers', name: 'ورود'),
+                    Category(id: 'minimal', name: 'بسيط'),
+                  ],
+                  onSaved: () async {},
+                ),
+              ),
+              child: const Text('Open editor'),
+            ),
           ),
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
     return admin;
   }
@@ -289,23 +314,102 @@ void main() {
     },
   );
 
-  testWidgets('editor normalizes duplicate tags before saving', (tester) async {
+  testWidgets(
+    'Enter adds removable tags, keeps punctuation, and deduplicates',
+    (tester) async {
+      final admin = await openEditor(tester);
+      final field = find.widgetWithText(TextFormField, 'وسوم البحث');
+      await tapVisible(tester, field);
+      expect(find.widgetWithText(InputChip, 'وردة'), findsOneWidget);
+      for (final value in ['وَرْدَة', '#FLOWER', 'flower', 'ناعم، صغير']) {
+        await tester.enterText(field, value);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expect(tester.widget<TextFormField>(field).controller!.text, isEmpty);
+      }
+      expect(find.widgetWithText(InputChip, 'FLOWER'), findsOneWidget);
+      expect(find.widgetWithText(InputChip, 'ناعم، صغير'), findsOneWidget);
+      final chip = find.widgetWithText(InputChip, 'ناعم');
+      await tapVisible(
+        tester,
+        find.descendant(of: chip, matching: find.byType(Icon)),
+      );
+      await tester.enterText(field, 'طبيعة');
+      await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
+      expect(admin.saved!['tags'], ['وردة', 'FLOWER', 'ناعم، صغير', 'طبيعة']);
+      expect(find.byType(InputChip), findsNothing);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.widgetWithText(TextFormField, 'وسوم البحث'),
+            )
+            .controller!
+            .text,
+        isEmpty,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('tattoo deletion supports cancellation, failure, and success', (
+    tester,
+  ) async {
     final admin = await openEditor(tester);
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'وسوم البحث'),
-      'وردة، وَرْدَة, #FLOWER; flower',
+    await tapVisible(tester, find.text('حذف الوشم'));
+    await tester.tap(find.text('رجوع'));
+    await tester.pumpAndSettle();
+    expect(admin.deleted, isEmpty);
+    admin.failDelete = true;
+    await tapVisible(tester, find.text('حذف الوشم'));
+    await tester.tap(find.text('تأكيد'));
+    await tester.pumpAndSettle();
+    expect(admin.deleted, isEmpty);
+    expect(find.text('تعذر حذف الوشم. حاول مرة ثانية.'), findsOneWidget);
+    admin.failDelete = false;
+    await tapVisible(tester, find.text('حذف الوشم'));
+    await tester.tap(find.text('تأكيد'));
+    await tester.pumpAndSettle();
+    expect(admin.deleted, ['existing']);
+    expect(find.byType(CatalogEditor), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('category editing previews and saves a separate thumbnail', (
+    tester,
+  ) async {
+    const original = 'asset:assets/test_catalog/flower.png';
+    const thumb = 'asset:assets/test_catalog/flower-alternate.png';
+    final admin = await openEditor(
+      tester,
+      category: const Category(
+        id: 'flowers',
+        name: 'ورود',
+        imageUrl: original,
+        thumbnailUrl: thumb,
+      ),
     );
-    await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
-    expect(admin.saved!['tags'], ['وردة', 'FLOWER']);
+    expect(tester.widget<CatalogImage>(find.byType(CatalogImage)).url, thumb);
+    admin.uploads.add(
+      UploadedImage(
+        'asset:assets/test_catalog/star.png',
+        'asset:assets/test_catalog/star-alternate.png',
+        {
+          'category-images': ['original', 'thumb'],
+        },
+      ),
+    );
+    await tapVisible(tester, find.text('رفع صورة PNG / JPG / WebP'));
     expect(
-      tester
-          .widget<TextFormField>(
-            find.widgetWithText(TextFormField, 'وسوم البحث'),
-          )
-          .controller!
-          .text,
-      isEmpty,
+      tester.widget<CatalogImage>(find.byType(CatalogImage)).url,
+      'asset:assets/test_catalog/star-alternate.png',
     );
-    await tester.pumpWidget(const SizedBox());
+    await tapVisible(tester, find.text('حفظ'));
+    expect(admin.saved!['image_url'], 'asset:assets/test_catalog/star.png');
+    expect(
+      admin.saved!['thumbnail_url'],
+      'asset:assets/test_catalog/star-alternate.png',
+    );
+    expect(admin.discarded, isEmpty);
+    expect(tester.takeException(), isNull);
   });
 }

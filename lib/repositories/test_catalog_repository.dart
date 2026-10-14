@@ -12,6 +12,7 @@ class TestCatalogRepository implements CatalogRepository {
 
   final List<Category> _categories;
   final List<Tattoo> _products;
+  final Set<String> offerProductIds = {};
   int _nextId = 0;
 
   bool _visible(Tattoo product) =>
@@ -51,6 +52,16 @@ class TestCatalogRepository implements CatalogRepository {
       );
     }
     _categories.removeWhere((category) => category.id == id);
+  }
+
+  void deleteTattoo(String id) {
+    if (offerProductIds.contains(id)) {
+      throw CatalogInputException('الوشم ضمن عرض. احذفه من العروض أولاً.');
+    }
+    if (!_products.any((product) => product.id == id)) {
+      throw CatalogInputException('الوشم غير موجود أو ما عندك صلاحية حذفه.');
+    }
+    _products.removeWhere((product) => product.id == id);
   }
 
   @override

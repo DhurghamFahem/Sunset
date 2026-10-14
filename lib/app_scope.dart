@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'repositories/catalog_repository.dart';
 import 'repositories/order_repository.dart';
+import 'repositories/offer_repository.dart';
 import 'services/admin_service.dart';
 import 'services/analytics.dart';
 import 'state/selection_store.dart';
@@ -13,12 +14,15 @@ class AppServices {
     required this.analytics,
     this.admin,
     OrderRepository? orders,
-  }) : orders = orders ?? MemoryOrderRepository(catalog);
+    OfferRepository? offers,
+  }) : orders = orders ?? MemoryOrderRepository(catalog),
+       offers = offers ?? MemoryOfferRepository(catalog, admin);
   final CatalogRepository catalog;
   final SelectionStore selection;
   final Analytics analytics;
   final CatalogAdmin? admin;
   final OrderRepository orders;
+  final OfferRepository offers;
 }
 
 class AppScope extends InheritedWidget {

@@ -28,6 +28,7 @@ abstract interface class CatalogAdmin {
   Future<void> signOut();
   Future<void> save(String table, Json data, {String? id});
   Future<void> deleteCategory(String id);
+  Future<void> deleteTattoo(String id);
   Future<UploadedImage?> pickAndUpload({bool category = false});
   Future<void> discard(Map<String, List<String>> objects);
 }
@@ -98,6 +99,26 @@ class AdminService implements CatalogAdmin {
   }
 
   @override
+  Future<void> deleteTattoo(String id) async {
+    try {
+      final deleted = await client
+          .from('products')
+          .delete()
+          .eq('id', id)
+          .select('id')
+          .maybeSingle();
+      if (deleted == null) {
+        throw CatalogInputException('الوشم غير موجود أو ما عندك صلاحية حذفه.');
+      }
+    } on PostgrestException catch (e) {
+      if (e.code == '23503') {
+        throw CatalogInputException('الوشم ضمن عرض. احذفه من العروض أولاً.');
+      }
+      throw CatalogInputException('تعذر حذف الوشم. حاول مرة ثانية.');
+    }
+  }
+
+  @override
   Future<UploadedImage?> pickAndUpload({bool category = false}) async {
     final image = await pickCatalogImage();
     if (image == null) return null;
@@ -114,23 +135,25 @@ class AdminService implements CatalogAdmin {
     final objects = <String, List<String>>{};
     try {
       final bucket = category ? 'category-images' : 'tattoo-images';
-      final thumbnailObject = '$path.$thumbnailExtension';
-      final object = category ? thumbnailObject : '$path.$extension';
+      final thumbnailBucket = category ? bucket : 'tattoo-thumbnails';
+      final thumbnailObject = category
+          ? '$path-thumb.$thumbnailExtension'
+          : '$path.$thumbnailExtension';
+      final object = '$path.$extension';
       await client.storage
           .from(bucket)
           .uploadBinary(
             object,
-            category ? thumbnail : bytes,
+            bytes,
             fileOptions: FileOptions(
-              contentType: category ? thumbnailMime : mime,
+              contentType: mime,
               cacheControl: '31536000',
             ),
           );
       objects[bucket] = [object];
       final originalUrl = client.storage.from(bucket).getPublicUrl(object);
-      if (category) return UploadedImage(originalUrl, originalUrl, objects);
       await client.storage
-          .from('tattoo-thumbnails')
+          .from(thumbnailBucket)
           .uploadBinary(
             thumbnailObject,
             thumbnail,
@@ -139,10 +162,10 @@ class AdminService implements CatalogAdmin {
               cacheControl: '31536000',
             ),
           );
-      objects['tattoo-thumbnails'] = [thumbnailObject];
+      (objects[thumbnailBucket] ??= []).add(thumbnailObject);
       return UploadedImage(
         originalUrl,
-        client.storage.from('tattoo-thumbnails').getPublicUrl(thumbnailObject),
+        client.storage.from(thumbnailBucket).getPublicUrl(thumbnailObject),
         objects,
       );
     } catch (_) {

@@ -12,6 +12,49 @@ import 'package:sunset/ui/customer/catalog_screen.dart';
 
 void main() {
   test(
+    'tattoo deletion requires admin and removes it from catalog and selections',
+    () async {
+      final catalog = TestCatalogRepository();
+      final admin = TestAdminService(catalog);
+      addTearDown(admin.dispose);
+      const id = 'test-tattoo-001';
+      await expectLater(
+        admin.deleteTattoo(id),
+        throwsA(isA<CatalogInputException>()),
+      );
+      expect(await catalog.product(id), isNotNull);
+      await admin.signIn('test@gmail.com', '1234');
+      await admin.deleteTattoo(id);
+      expect(await catalog.product(id), isNull);
+      expect(await catalog.selected([id]), isEmpty);
+      expect(
+        await catalog.products(
+          const CatalogQuery(admin: true, search: 'TEST-001'),
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
+    'categories retain originals and prefer thumbnails with legacy fallback',
+    () async {
+      final catalog = TestCatalogRepository();
+      final old = (await catalog.categories()).first;
+      expect(old.thumbnail, old.imageUrl);
+      catalog.save('categories', {
+        'name_ar': 'Thumbnail',
+        'image_url': 'original',
+        'thumbnail_url': 'thumb',
+      });
+      final category = (await catalog.categories()).singleWhere(
+        (c) => c.name == 'Thumbnail',
+      );
+      expect(category.imageUrl, 'original');
+      expect(category.thumbnail, 'thumb');
+    },
+  );
+  test(
     'tattoo codes are unique on creation and editing, including hidden tattoos',
     () async {
       final catalog = TestCatalogRepository();

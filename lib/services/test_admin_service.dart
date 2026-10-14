@@ -52,6 +52,12 @@ class TestAdminService implements CatalogAdmin {
   }
 
   @override
+  Future<void> deleteTattoo(String id) async {
+    _requireAdmin();
+    catalog.deleteTattoo(id);
+  }
+
+  @override
   Future<UploadedImage?> pickAndUpload({bool category = false}) async {
     _requireAdmin();
     final image = await pickCatalogImage();
@@ -61,9 +67,10 @@ class TestAdminService implements CatalogAdmin {
       image.thumbnail,
       mimeType: image.thumbnailMime,
     ).toString();
-    final original = category
-        ? thumbnail
-        : Uri.dataFromBytes(image.bytes, mimeType: image.mime).toString();
+    final original = Uri.dataFromBytes(
+      image.bytes,
+      mimeType: image.mime,
+    ).toString();
     return UploadedImage(original, thumbnail, {});
   }
 

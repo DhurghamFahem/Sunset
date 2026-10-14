@@ -46,17 +46,20 @@ class Category {
     required this.id,
     required this.name,
     this.imageUrl,
+    this.thumbnailUrl,
     this.active = true,
     this.sortOrder = 0,
   });
   final String id, name;
-  final String? imageUrl;
+  final String? imageUrl, thumbnailUrl;
+  String? get thumbnail => thumbnailUrl ?? imageUrl;
   final bool active;
   final int sortOrder;
   factory Category.fromJson(Json j) => Category(
     id: j['id'] as String,
     name: j['name_ar'] as String,
     imageUrl: j['image_url'] as String?,
+    thumbnailUrl: j['thumbnail_url'] as String?,
     active: j['active'] as bool? ?? true,
     sortOrder: j['sort_order'] as int? ?? 0,
   );

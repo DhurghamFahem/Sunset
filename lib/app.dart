@@ -11,6 +11,7 @@ import 'ui/customer/detail_screen.dart';
 import 'ui/customer/selection_screen.dart';
 import 'ui/customer/orders_screen.dart';
 import 'ui/admin/admin_screen.dart';
+import 'ui/offers_screen.dart';
 import 'ui/widgets/common.dart';
 
 class G2GApp extends StatefulWidget {
@@ -34,6 +35,7 @@ class _G2GAppState extends State<G2GApp> {
             CustomerShell(path: state.uri.path, child: child),
         routes: [
           GoRoute(path: '/', builder: (_, _) => const CatalogScreen()),
+          GoRoute(path: '/offers', builder: (_, _) => const OffersScreen()),
           GoRoute(
             path: '/categories',
             builder: (_, _) => const CategoriesScreen(),
@@ -57,6 +59,10 @@ class _G2GAppState extends State<G2GApp> {
         ],
       ),
       GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
+      GoRoute(
+        path: '/admin/offers',
+        builder: (_, _) => const AdminScreen(section: 'offers'),
+      ),
       GoRoute(
         path: '/admin/images',
         builder: (_, _) => const AdminScreen(section: 'images'),

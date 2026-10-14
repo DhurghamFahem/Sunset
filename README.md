@@ -20,6 +20,16 @@ Apply **all pending migrations**, including `202610030001_orders.sql`, `20261003
 
 Order checks: `flutter test test/order_repository_test.dart test/order_ui_test.dart`; database authorization and lifecycle checks: execute `supabase/tests/orders.sql` and `supabase/tests/manual_orders.sql` against a local database with all migrations applied. SQL fixtures are rolled back.
 
+## Tattoo offers
+
+Open **العروض** in administration (`/admin/offers`) and choose **إضافة عرض**. Enter a name and a total price in IQD, search existing tattoos by name or code, and select one or more designs (up to 100). Selections remain when searching or loading more results. Each offer includes one piece of every selected tattoo. Save, edit, hide, or delete the offer without changing the original tattoos or their individual prices.
+
+The main catalog shows the newest available offers in a swipeable carousel above search, with previous/next buttons and a page counter. It disappears when no offers are available. Customers can open **كل العروض** or the price-tag icon (`/offers`) to see all offers and included artwork. Both the carousel and full offers page show the total price excluding delivery and support Instagram and WhatsApp inquiries. Instagram opens the store chat at **@ge.to.ge**, where customers mention the offer name; WhatsApp opens a prefilled draft. Customers send messages manually. Offers are displayed for inquiry and do not automatically apply bundle discounts to the regular selection/order flow.
+
+Apply `supabase/migrations/202610140001_offers.sql` after all earlier pending migrations before using offers with Supabase. Only administrators may save or delete offers. Public reads hide inactive offers and the entire bundle when any included tattoo or all its categories are hidden. Remove a tattoo from its offers before deleting that tattoo; deleting an offer preserves all tattoos. Test-mode offers stay in memory and reset on reload. No production migration is applied by editing this repository.
+
+Checks: `flutter test test/offer_repository_test.dart test/offers_ui_test.dart`; run `supabase/tests/offers.sql` against a disposable migrated Supabase database for atomic saves, membership validation, and access control.
+
 ## Requirements
 
 - Flutter **3.47.4 stable** / Dart **3.13.3** or a compatible newer release.
@@ -51,7 +61,7 @@ The legacy name `SUPABASE_ANON_KEY` accepts either an anon key or the newer publ
 
 ## Database, RLS, and Storage
 
-On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610120001_optional_tattoo_names.sql` and `202610120002_tattoo_code_name_fallback.sql`, before using this version with Supabase. Tattoo codes are required, accept letters, numbers, symbols, and mixed text, preserve leading zeros, and must be unique. Empty or whitespace-only codes are rejected. Tattoo names are optional; tattoos with null, empty, or whitespace-only names display their code throughout the app and generated images. Alternatively link a project and apply migrations using the Supabase CLI:
+On a new project, run all files in `supabase/migrations` in filename order in the Supabase SQL editor. For an existing installation, apply any pending migrations in order, including `202610120001_optional_tattoo_names.sql`, `202610120002_tattoo_code_name_fallback.sql`, and `202610120003_category_thumbnails.sql`, before using this version with Supabase. Tattoo codes are required, accept letters, numbers, symbols, and mixed text, preserve leading zeros, and must be unique. Empty or whitespace-only codes are rejected. Tattoo names are optional; tattoos with null, empty, or whitespace-only names display their code throughout the app and generated images. Alternatively link a project and apply migrations using the Supabase CLI:
 
 ```sh
 npx supabase login
@@ -72,7 +82,7 @@ The migration creates:
 - Row-level security on every public application table.
 - Public read access only for active products with at least one active category. A tattoo assigned to an active and a hidden category stays public, but its hidden category membership is omitted for public users. Direct product URLs and search follow the same rule. Explicit query filters apply even if an administrator is browsing the customer UI.
 - Catalog management only for authenticated users listed in `admin_users`. Signing up or merely holding an authenticated token does not grant management access. Clients cannot read or modify the allowlist.
-- Public buckets: `tattoo-images` (10 MiB), `tattoo-thumbnails` (2 MiB), and `category-images` (2 MiB), with PNG/JPEG/WebP allowlists. Only allowlisted administrators can upload, update, or delete objects.
+- Public buckets: `tattoo-images` (10 MiB), `tattoo-thumbnails` (2 MiB), and `category-images` (10 MiB), with PNG/JPEG/WebP allowlists. Only allowlisted administrators can upload, update, or delete objects.
 
 Public bucket URLs remain readable to anyone who already knows the URL after a product is hidden. Deactivation removes catalog discoverability; it is not a revocation of previously shared images. For actual image removal, an administrator can delete the object in Supabase Storage. Do not remove a file still referenced by another record.
 
@@ -95,12 +105,13 @@ values ('REPLACE-WITH-AUTH-USER-UUID');
 1. Open **التصنيفات** in the admin area and tap **+**.
 2. Enter `وشومات سوار`, upload its image if available, set the numeric sort order, and save.
 3. Open **المنتجات**, tap **+**, add one or more tattoo images, and enter a unique code such as `001`. Use **إضافة صورة** again for each additional image. The first image is the cover for cards and selection exports; use the star button to promote another image, or the delete button to remove an image from the gallery. At least one image is required. Customers can swipe, use arrows, or tap thumbnails to see every image and zoom into details.
-4. Enter the required customer-facing tattoo name and exact width and height in centimeters. Select رجالي, نسائي, or both; choose one or more body placements and one or more categories. Add search tags separated by Arabic/English commas, semicolons, or newlines (up to 30 tags, 64 characters each); normalized duplicates are removed. Price remains optional.
+4. Enter an optional customer-facing tattoo name and the required exact width and height in centimeters. Select رجالي, نسائي, or both; choose one or more body placements and one or more categories. Type each search tag and press Enter (or tap +) to add it as a removable chip. Commas and punctuation do not split tags. Up to 30 tags, 64 characters each; normalized duplicates are removed. Saving also includes a pending tag. Price remains optional.
 5. Set **ظاهر بالكتالوج**, **مميز**, and **وصل حديثاً** as needed.
-6. Use **حفظ وإضافة وشم آخر** to keep the audiences, placements, categories, dimensions, and price but clear the code, name, tags, and images for the next design.
-7. To edit, tap a record. Use the sort-order number to reorder. Hide unavailable designs instead of deleting them. Deleting a category that contains products is prevented by its foreign key.
+6. To delete a tattoo, open its editor, choose **حذف الوشم**, and confirm. It is removed from the catalog; existing order snapshots and stored image files are retained.
+7. Use **حفظ وإضافة وشم آخر** to keep the audiences, placements, categories, dimensions, and price but clear the code, name, tags, and images for the next design.
+8. To edit, tap a record. Use the sort-order number to reorder. Turn off **ظاهر بالكتالوج** to hide a design temporarily. Deleting a category that contains products is prevented by its foreign key.
 
-Uploads validate file extension, magic bytes, decoded dimensions, and size. Images above 24 megapixels are rejected before full decode. Original tattoo bytes are stored unmodified. New uploads generate proportional previews with a maximum edge of 480 pixels (without enlarging small images): JPEG at quality 78 for opaque images, or compressed PNG for transparent cutouts. Previews respect camera orientation. Catalog cards load only the preview; opening tattoo details or the full-screen viewer loads the original images. Every gallery image receives a preview so promoting another image to the cover stays fast. Category images use the optimized version. Existing uploads keep their current thumbnails; re-upload an image to generate the smaller preview. Failed/cancelled uploads attempt to remove newly staged objects. Replaced, previously saved images are intentionally retained; periodically review unreferenced objects in Storage before deleting them.
+Uploads validate file extension, magic bytes, decoded dimensions, and size. Images above 24 megapixels are rejected before full decode. Original tattoo and category image bytes are stored unmodified. New uploads generate proportional previews with a maximum edge of 480 pixels (without enlarging small images): JPEG at quality 78 for opaque images, or compressed PNG for transparent cutouts. Previews respect camera orientation. Catalog cards load only the preview; opening tattoo details or the full-screen viewer loads the original images. Every gallery image receives a preview so promoting another image to the cover stays fast. Categories store a separate thumbnail URL and use the optimized preview in customer cards, admin lists, and the editor. Existing categories fall back to their current image until re-uploaded. Apply `202610120003_category_thumbnails.sql` before uploading category images. Existing uploads keep their current thumbnails; re-upload an image to generate the smaller preview. Failed/cancelled uploads attempt to remove newly staged objects. Replaced, previously saved images are intentionally retained; periodically review unreferenced objects in Storage before deleting them.
 
 Extra images are stored in the ordered `additional_images` array, with `image_url` and optional `thumbnail_url` per image. Existing single-image tattoos need no changes. New uploads removed before saving or left in a cancelled editor are cleaned up; removing a previously saved image only removes its gallery reference and does not delete shared Storage objects.
 

@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import 'catalog_editor.dart';
 import 'order_management.dart';
+import '../offers_screen.dart';
 import '../customer/catalog_screen.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -302,6 +303,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 children: [
                   for (final entry in const {
                     'products': 'المنتجات',
+                    'offers': 'العروض',
                     'categories': 'التصنيفات',
                     'orders': 'الطلبات',
                     'images': 'صور للزبون',
@@ -320,7 +322,9 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ),
-          if (widget.section == 'images')
+          if (widget.section == 'offers')
+            const Expanded(child: OffersScreen(admin: true))
+          else if (widget.section == 'images')
             const Expanded(child: CatalogScreen(forCustomer: true))
           else if (!['products', 'categories'].contains(widget.section))
             Expanded(
@@ -438,7 +442,7 @@ class _AdminScreenState extends State<AdminScreen> {
                             leading: SizedBox(
                               width: 54,
                               height: 54,
-                              child: CatalogImage(c.imageUrl, padding: 2),
+                              child: CatalogImage(c.thumbnail, padding: 2),
                             ),
                             title: Text(c.name),
                             subtitle: Text(

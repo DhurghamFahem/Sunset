@@ -7,6 +7,7 @@ import '../../services/catalog_image_exporter.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/tattoo_card.dart';
+import '../widgets/offers_carousel.dart';
 import 'catalog_filter_sheet.dart';
 import 'share_screen.dart';
 
@@ -161,6 +162,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               wide: width >= 650,
                             ),
                             const SizedBox(height: 20),
+                            if (!widget.forCustomer &&
+                                widget.categoryId == null)
+                              const OffersCarousel(),
                             if (widget.forCustomer) ...[
                               const Text(
                                 'فلتر الوشومات وجهّز صور كل النتائج بالأسعار، بدون إنشاء طلب.',
