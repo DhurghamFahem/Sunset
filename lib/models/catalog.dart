@@ -26,16 +26,27 @@ enum TattooAudience {
 }
 
 enum BodyPlacement {
-  arm('الذراع'),
-  back('الظهر'),
-  shoulder('الكتف'),
+  // Keep existing storage keys so saved placements still load and filter.
+  arm('ذراع كامل'),
+  halfArm('نصف ذراع'),
   wrist('المعصم'),
-  hand('اليد'),
-  chest('الصدر'),
+  hand('الكف'),
+  fingers('الاصابع'),
+  forearm('الزند'),
+  shoulder('الكتف'),
   neck('الرقبة'),
+  collarbone('الترقوه'),
+  chest('الصدر'),
+  abdomen('البطن'),
+  back('الظهر'),
+  fullBack('ظهر كامل'),
+  fullBackVertical('ظهر كامل طولي'),
+  fullBackHorizontal('ظهر كامل عرضي'),
+  buttocks('الارداف'),
   leg('الساق'),
   ankle('الكاحل'),
-  foot('القدم');
+  foot('القدم'),
+  thigh('الفخذ');
 
   const BodyPlacement(this.label);
   final String label;

@@ -83,6 +83,9 @@ begin
     raise exception 'invalid category allowed';
   exception when foreign_key_violation then null; end;
   perform pg_temp.assert_true((select price is null and cardinality(category_ids) = 2 from public.catalog_products where id = saved), 'failed membership replacement rolls back product and links');
+  perform public.save_catalog_product(payload || '{"body_placements":["arm","halfArm","wrist","hand","fingers","forearm","shoulder","neck","collarbone","chest","abdomen","back","fullBack","fullBackVertical","fullBackHorizontal","buttocks","leg","ankle","foot","thigh"]}', saved);
+  perform pg_temp.assert_true((select cardinality(body_placements) = 20 from public.catalog_products where id = saved), 'RPC saves every expanded placement');
+  perform pg_temp.assert_true((select count(*) from public.catalog_products where id = saved and body_placements && array['fullBackVertical','thigh']) = 1, 'expanded placements support catalog filters');
   begin
     perform public.save_catalog_product(payload || '{"audiences":[]}', saved);
     raise exception 'empty audiences allowed';

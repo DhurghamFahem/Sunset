@@ -251,7 +251,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('open-filters')));
       await tester.pumpAndSettle();
       await screenshot(tester, capture, 'filters');
-      await tapVisible(tester, find.byKey(const ValueKey('filter-المعصم')));
+      await tapVisible(tester, find.byKey(const ValueKey('filter-الكف')));
       // Collapse placement to keep the next choices close by.
       await tapVisible(tester, find.text('مكان الوشم'));
       await tapVisible(tester, find.text('التصنيف'));
@@ -273,7 +273,7 @@ void main() {
       expect(cards, isNotEmpty);
       for (final card in cards) {
         expect(card.product.audiences, contains(TattooAudience.men));
-        expect(card.product.bodyPlacements, contains(BodyPlacement.wrist));
+        expect(card.product.bodyPlacements, contains(BodyPlacement.hand));
         expect(card.product.categoryIds, contains('test-branches'));
         expect(card.product.size, const TattooSize(3, 5));
         expect(card.product.tags, contains('floral'));
@@ -291,7 +291,7 @@ void main() {
       );
       await tapVisible(tester, find.byKey(const ValueKey('open-filters')));
       // Reopening retains applied choices; dismissal does not clear them.
-      expect(find.text('المعصم'), findsWidgets);
+      expect(find.text('الكف'), findsWidgets);
       await tester.tap(find.byTooltip('إغلاق الفلاتر'));
       await tester.pumpAndSettle();
       await tapVisible(tester, find.text('عرض الكل'));
@@ -316,7 +316,7 @@ void main() {
       final initial = catalog.queries.length;
       await tester.tap(find.byKey(const ValueKey('open-filters')));
       await tester.pumpAndSettle();
-      await tapVisible(tester, find.byKey(const ValueKey('filter-الذراع')));
+      await tapVisible(tester, find.byKey(const ValueKey('filter-ذراع كامل')));
       await tester.tap(find.byTooltip('إغلاق الفلاتر'));
       await tester.pumpAndSettle();
       expect(catalog.queries.length, initial);
@@ -324,11 +324,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<FilterChip>(find.byKey(const ValueKey('filter-الذراع')))
+            .widget<FilterChip>(find.byKey(const ValueKey('filter-ذراع كامل')))
             .selected,
         isFalse,
       );
-      await tapVisible(tester, find.byKey(const ValueKey('filter-الذراع')));
+      await tapVisible(tester, find.byKey(const ValueKey('filter-ذراع كامل')));
       await tapVisible(tester, find.byKey(const ValueKey('filter-الظهر')));
       expect(catalog.queries.length, initial);
       await tester.tap(find.text('عرض الوشومات'));

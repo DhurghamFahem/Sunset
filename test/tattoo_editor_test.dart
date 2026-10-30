@@ -126,7 +126,7 @@ void main() {
       for (final label in [
         'رجالي',
         'نسائي',
-        'الذراع',
+        'ذراع كامل',
         'الظهر',
         'ورود',
         'بسيط',
@@ -140,6 +140,8 @@ void main() {
       }
       await tapVisible(tester, find.widgetWithText(FilterChip, 'نسائي'));
       await tapVisible(tester, find.widgetWithText(FilterChip, 'المعصم'));
+      await tapVisible(tester, find.widgetWithText(FilterChip, 'ظهر كامل طولي'));
+      await tapVisible(tester, find.widgetWithText(FilterChip, 'الفخذ'));
       await tapVisible(tester, find.text('حفظ وإضافة وشم آخر'));
       expect(admin.savedId, 'existing');
       expect(admin.saved!['audiences'], ['men']);
@@ -150,7 +152,7 @@ void main() {
       expect(admin.saved!['tags'], ['وردة', 'ناعم']);
       expect(
         admin.saved!['body_placements'],
-        containsAll(['arm', 'back', 'wrist']),
+        containsAll(['arm', 'back', 'wrist', 'fullBackVertical', 'thigh']),
       );
       expect(admin.saved!['category_ids'], containsAll(['flowers', 'minimal']));
       expect(tester.takeException(), isNull);
@@ -204,7 +206,7 @@ void main() {
     tester,
   ) async {
     final admin = await openEditor(tester);
-    for (final label in ['رجالي', 'نسائي', 'الذراع', 'الظهر', 'ورود', 'بسيط']) {
+    for (final label in ['رجالي', 'نسائي', 'ذراع كامل', 'الظهر', 'ورود', 'بسيط']) {
       await tapVisible(tester, find.widgetWithText(FilterChip, label));
     }
     await tapVisible(tester, find.text('حفظ'));

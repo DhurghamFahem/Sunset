@@ -86,6 +86,8 @@ The migration creates:
 
 Public bucket URLs remain readable to anyone who already knows the URL after a product is hidden. Deactivation removes catalog discoverability; it is not a revocation of previously shared images. For actual image removal, an administrator can delete the object in Supabase Storage. Do not remove a file still referenced by another record.
 
+Apply `202610300001_specific_body_placements.sql` before deploying the expanded body-location choices. The admin editor and customer filters share the same 20 options, ordered from ذراع كامل through الفخذ. Existing `arm` and `hand` assignments are retained and displayed as ذراع كامل and الكف.
+
 ### Create the first administrator
 
 1. In Supabase **Authentication → Users**, create an email/password user and confirm the email. No signup screen is exposed in this app.
