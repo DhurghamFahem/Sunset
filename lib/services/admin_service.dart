@@ -14,6 +14,8 @@ class CatalogInputException implements Exception {
   String toString() => message;
 }
 
+enum StaffAccess { none, employee, administrator }
+
 class UploadedImage {
   UploadedImage(this.imageUrl, this.thumbnailUrl, this.objects);
   final String imageUrl, thumbnailUrl;
@@ -24,6 +26,7 @@ abstract interface class CatalogAdmin {
   Stream<Object?> get authChanges;
   bool get signedIn;
   Future<bool> isAdmin();
+  Future<StaffAccess> staffAccess();
   Future<void> signIn(String email, String password);
   Future<void> signOut();
   Future<void> save(String table, Json data, {String? id});
@@ -44,12 +47,21 @@ class AdminService implements CatalogAdmin {
   Future<bool> isAdmin() async =>
       signedIn && await client.rpc('is_admin') == true;
   @override
+  Future<StaffAccess> staffAccess() async {
+    if (!signedIn) return StaffAccess.none;
+    if (await isAdmin()) return StaffAccess.administrator;
+    return await client.rpc('can_manage_orders') == true
+        ? StaffAccess.employee
+        : StaffAccess.none;
+  }
+
+  @override
   Future<void> signIn(String email, String password) async {
     await client.auth.signInWithPassword(
       email: email.trim(),
       password: password,
     );
-    if (!await isAdmin()) {
+    if (await staffAccess() == StaffAccess.none) {
       await client.auth.signOut();
       throw CatalogInputException('هذا الحساب ما عنده صلاحية الإدارة.');
     }

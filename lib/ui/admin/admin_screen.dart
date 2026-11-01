@@ -28,6 +28,13 @@ class _AdminScreenState extends State<AdminScreen> {
   final form = GlobalKey<FormState>();
   StreamSubscription<dynamic>? authSubscription;
   CatalogAdmin? admin;
+  StaffAccess access = StaffAccess.none;
+  int authGeneration = 0;
+  String get section =>
+      access == StaffAccess.employee &&
+          !['orders', 'images'].contains(widget.section)
+      ? 'orders'
+      : widget.section;
   bool initialized = false,
       checking = true,
       allowed = false,
@@ -39,7 +46,13 @@ class _AdminScreenState extends State<AdminScreen> {
   List<Tattoo> products = [];
   int generation = 0, offset = 0;
   Timer? debounce;
-  bool get isCategories => widget.section == 'categories';
+  bool get isCategories => section == 'categories';
+  @override
+  void didUpdateWidget(covariant AdminScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.section != widget.section && allowed) load();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -51,17 +64,21 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> check() async {
+    final ticket = ++authGeneration;
     try {
-      final ok = await admin?.isAdmin() ?? false;
-      if (!mounted) return;
+      final role = await admin?.staffAccess() ?? StaffAccess.none;
+      if (!mounted || ticket != authGeneration) return;
       setState(() {
-        allowed = ok;
+        access = role;
+        allowed = role != StaffAccess.none;
         checking = false;
       });
-      if (ok) await load();
+      if (allowed) await load();
     } catch (_) {
-      if (mounted) {
+      if (mounted && ticket == authGeneration) {
         setState(() {
+          access = StaffAccess.none;
+          allowed = false;
           checking = false;
           error = 'تعذر التحقق من الحساب. حاول مرة ثانية.';
         });
@@ -97,7 +114,10 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> load({bool next = false}) async {
-    if (!['products', 'categories'].contains(widget.section)) return;
+    if (access != StaffAccess.administrator ||
+        !['products', 'categories'].contains(section)) {
+      return;
+    }
     if (next && loading) return;
     final token = ++generation;
     if (!next) offset = 0;
@@ -301,20 +321,25 @@ class _AdminScreenState extends State<AdminScreen> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  for (final entry in const {
-                    'products': 'المنتجات',
-                    'offers': 'العروض',
-                    'categories': 'التصنيفات',
-                    'orders': 'الطلبات',
-                    'images': 'صور للزبون',
-                    'team': 'الموظفون',
-                    'settings': 'التوصيل',
-                  }.entries)
+                  for (final entry
+                      in const {
+                        'products': 'المنتجات',
+                        'offers': 'العروض',
+                        'categories': 'التصنيفات',
+                        'orders': 'الطلبات',
+                        'images': 'صور للزبون',
+                        'team': 'الموظفون',
+                        'settings': 'التوصيل',
+                      }.entries.where(
+                        (entry) =>
+                            access == StaffAccess.administrator ||
+                            ['orders', 'images'].contains(entry.key),
+                      ))
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ChoiceChip(
                         label: Text(entry.value),
-                        selected: widget.section == entry.key,
+                        selected: section == entry.key,
                         onSelected: (_) => context.go('/admin/${entry.key}'),
                       ),
                     ),
@@ -322,16 +347,13 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ),
-          if (widget.section == 'offers')
+          if (section == 'offers')
             const Expanded(child: OffersScreen(admin: true))
-          else if (widget.section == 'images')
+          else if (section == 'images')
             const Expanded(child: CatalogScreen(forCustomer: true))
-          else if (!['products', 'categories'].contains(widget.section))
+          else if (!['products', 'categories'].contains(section))
             Expanded(
-              child: OrderManagement(
-                key: ValueKey(widget.section),
-                section: widget.section,
-              ),
+              child: OrderManagement(key: ValueKey(section), section: section),
             )
           else ...[
             if (AppConfig.useTestData)

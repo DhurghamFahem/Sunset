@@ -44,6 +44,8 @@ class PreviewAdmin implements AdminService {
   @override
   Future<bool> isAdmin() async => true;
   @override
+  Future<StaffAccess> staffAccess() async => StaffAccess.administrator;
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

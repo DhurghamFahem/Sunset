@@ -17,6 +17,9 @@ class TestAdminService implements CatalogAdmin {
   bool get signedIn => _signedIn;
   @override
   Future<bool> isAdmin() async => signedIn;
+  @override
+  Future<StaffAccess> staffAccess() async =>
+      signedIn ? StaffAccess.administrator : StaffAccess.none;
 
   @override
   Future<void> signIn(String email, String password) async {
