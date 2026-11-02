@@ -286,6 +286,17 @@ class MemoryOrderRepository implements OrderRepository {
     String? token,
   }) async {
     await get(order.id, token: token);
+    final addedIds = changes.containsKey('items')
+        ? (changes['items'] as List)
+              .map((i) => i['product_id'] as String)
+              .where((id) => !order.items.any((i) => i.productId == id))
+              .toSet()
+              .toList()
+        : <String>[];
+    final available = addedIds.isEmpty
+        ? <Tattoo>[]
+        : await catalog.selected(addedIds);
+    // Re-read after the catalog lookup so concurrent saves still conflict.
     final old = _orders[order.id]!;
     if (old.version != order.version) {
       throw const OrderException(
@@ -344,11 +355,32 @@ class MemoryOrderRepository implements OrderRepository {
         changes.keys.any((k) => !['status', 'items'].contains(k))) {
       throw const OrderException('تم قفل الطلب بعد الشحن');
     }
-    if (next.items.length != old.items.length) {
+    if (next.items.isEmpty ||
+        next.items.length > 100 ||
+        next.items.map((i) => i.productId).toSet().length !=
+            next.items.length ||
+        (!old.status.editable && next.items.length != old.items.length)) {
       throw const OrderException('قطع الطلب غير صحيحة');
     }
     for (var n = 0; n < next.items.length; n++) {
-      final i = next.items[n], before = old.items[n];
+      final i = next.items[n];
+      var before = old.status.editable
+          ? old.items.where((item) => item.productId == i.productId).firstOrNull
+          : old.items[n];
+      if (before == null) {
+        final product = available.where((p) => p.id == i.productId).firstOrNull;
+        if (product == null) {
+          throw const OrderException('بعض الوشومات لم تعد متوفرة');
+        }
+        before = OrderItem(
+          productId: product.id,
+          name: product.displayName,
+          code: product.code,
+          quantity: i.quantity,
+          originalPrice: product.price,
+          unitPrice: product.price,
+        );
+      }
       if (i.productId != before.productId ||
           i.name != before.name ||
           i.code != before.code ||

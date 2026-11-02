@@ -22,6 +22,120 @@ void main() {
     'status': 'confirmed',
   };
   test(
+    'staff can add, remove and replace tattoos in every pre-shipping status',
+    () async {
+      final token = newOrderToken();
+      var order = await repo.create(token, {'1': 1});
+      final original = order.items.single.toJson();
+      final addition = {
+        'product_id': '2',
+        'name': fixture(2).displayName,
+        'code': fixture(2).code,
+        'quantity': 2,
+        'original_price': 3000,
+        'unit_price': 2500,
+        'accepted_quantity': 0,
+      };
+      for (final status in [
+        OrderStatus.pending,
+        OrderStatus.confirmed,
+        OrderStatus.uploaded,
+        OrderStatus.packed,
+      ]) {
+        if (status != OrderStatus.pending) {
+          order = await repo.save(order, {...details, 'status': status.name});
+        }
+        order = await repo.save(order, {
+          'items': [addition, original],
+        });
+        expect(order.pieces, 3);
+        expect(order.subtotal, 10000);
+        await expectLater(
+          repo.save(order, {
+            'items': [original],
+          }, token: token),
+          throwsA(isA<OrderException>()),
+        );
+        order = await repo.save(order, {
+          'items': [addition],
+        });
+        expect(order.items.single.productId, '2');
+        order = await repo.save(order, {
+          'items': [original],
+        });
+        expect(order.status, status);
+      }
+      final stale = order;
+      order = await repo.save(order, {'status': 'shipped'});
+      await expectLater(
+        repo.save(stale, {
+          'items': [addition],
+        }),
+        throwsA(isA<OrderException>()),
+      );
+      for (final items in [
+        [addition],
+        [original, addition],
+        <Map<String, dynamic>>[],
+      ]) {
+        await expectLater(
+          repo.save(order, {'items': items}),
+          throwsA(isA<OrderException>()),
+        );
+      }
+      expect((await repo.get(order.id)).items.single.productId, '1');
+    },
+  );
+
+  test('selection changes reject empty, duplicate, unavailable and forged snapshots', () async {
+    var order = await repo.create(newOrderToken(), {'2': 1});
+    final item = {
+      'product_id': '1',
+      'name': fixture(1).displayName,
+      'code': fixture(1).code,
+      'quantity': 1,
+      'original_price': 5000,
+      'unit_price': 4000,
+    };
+    for (final items in [
+      [],
+      [item, item],
+      [
+        {...item, 'product_id': 'missing'},
+      ],
+      [
+        {...item, 'original_price': 6000},
+      ],
+      [
+        {...item, 'name': 'forged'},
+      ],
+      [
+        {...item, 'quantity': 0},
+      ],
+      [
+        {...item, 'accepted_quantity': 1},
+      ],
+      List.generate(101, (i) => {...item, 'product_id': '$i'}),
+    ]) {
+      await expectLater(
+        repo.save(order, {'items': items}),
+        throwsA(isA<OrderException>()),
+      );
+    }
+    order = await repo.save(order, {
+      'items': [item],
+    });
+    // Retained snapshots remain valid even if the tattoo leaves the catalog.
+    (repo.catalog as MemoryCatalog).data.clear();
+    order = await repo.save(order, {
+      'items': [
+        {...item, 'quantity': 3},
+      ],
+    });
+    expect(order.subtotal, 12000);
+    expect(order.items.single.originalPrice, 5000);
+  });
+  test(
     'delivery upload preserves details and follows staff permissions',
     () async {
       final token = newOrderToken();

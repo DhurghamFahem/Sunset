@@ -45,7 +45,7 @@ void main() {
   );
   Future<AppServices> services({bool loseManualResponse = false}) async {
     SharedPreferences.setMockInitialValues({});
-    final catalog = MemoryCatalog(products: [fixture(1)]);
+    final catalog = MemoryCatalog(products: [fixture(1), fixture(2)]);
     final analytics = NoopAnalytics();
     return AppServices(
       catalog: catalog,
@@ -83,6 +83,70 @@ void main() {
       image.dispose();
     });
   }
+
+  testWidgets('staff replaces tattoos and saves the existing packed order', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final app = await services();
+    var order = await app.orders.create(newOrderToken(), {'1': 1});
+    order = await app.orders.save(order, {
+      'phone': '07701234567',
+      'governorate': 'بغداد',
+      'area': 'المنصور',
+      'status': 'confirmed',
+      'final_total': 4000,
+    });
+    order = await app.orders.save(order, {'status': 'uploaded'});
+    order = await app.orders.save(order, {'status': 'packed'});
+    await tester.pumpWidget(wrap(app, OrderScreen(order: order)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('إزالة ${fixture(1).displayName}'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('إضافة وشومات'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('إضافة ${fixture(2).displayName}'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('quantity-2')), '2');
+    await tester.tap(find.text('إضافة إلى الطلب'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('order-item-1')), findsNothing);
+    expect(find.byKey(const ValueKey('order-item-2')), findsOneWidget);
+    expect((await app.orders.get(order.id)).items.single.productId, '1');
+    final save = find.text('حفظ التعديلات');
+    await tester.scrollUntilVisible(
+      save,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    final saved = await app.orders.get(order.id);
+    expect(saved.items.single.productId, '2');
+    expect(saved.pieces, 2);
+    expect(saved.total, 10000);
+    expect(saved.finalTotal, isNull);
+    expect(saved.status, OrderStatus.packed);
+    expect((await app.orders.list()).length, 1);
+    final ship = find.widgetWithText(FilledButton, OrderStatus.shipped.label);
+    await tester.ensureVisible(ship);
+    await tester.pumpAndSettle();
+    await tester.tap(ship);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('الوشومات'),
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('إضافة وشومات'), findsNothing);
+    expect(find.byTooltip('إزالة ${fixture(2).displayName}'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('employee creates and confirms a manual order on mobile', (
     tester,

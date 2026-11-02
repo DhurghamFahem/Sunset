@@ -11,7 +11,10 @@ import '../../repositories/order_repository.dart';
 import '../widgets/common.dart';
 
 class ManualOrderScreen extends StatefulWidget {
-  const ManualOrderScreen({super.key});
+  const ManualOrderScreen({super.key, this.existingProductIds});
+
+  // When supplied, return draft additions to the order editor without saving.
+  final Set<String>? existingProductIds;
 
   @override
   State<ManualOrderScreen> createState() => _ManualOrderScreenState();
@@ -29,6 +32,7 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
   String? loadError, saveError, requestToken;
 
   bool get locked => saving || requestToken != null;
+  bool get picking => widget.existingProductIds != null;
 
   @override
   void didChangeDependencies() {
@@ -87,7 +91,7 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
 
   void add(Tattoo product) {
     if (locked || selected.containsKey(product.id)) return;
-    if (selected.length == 100) {
+    if (selected.length + (widget.existingProductIds?.length ?? 0) >= 100) {
       showNotice(context, 'يمكن إضافة 100 وشم مختلف كحد أقصى');
       return;
     }
@@ -100,6 +104,20 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
 
   Future<void> create() async {
     if (saving || selected.isEmpty || !form.currentState!.validate()) return;
+    if (picking) {
+      Navigator.pop(context, [
+        for (final product in selected.values)
+          OrderItem(
+            productId: product.id,
+            name: product.displayName,
+            code: product.code,
+            quantity: quantities[product.id]!,
+            originalPrice: product.price,
+            unitPrice: product.price,
+          ),
+      ]);
+      return;
+    }
     setState(() {
       saving = true;
       saveError = null;
@@ -133,7 +151,9 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !saving,
     child: Scaffold(
-      appBar: AppBar(title: const Text('إضافة طلب يدوي')),
+      appBar: AppBar(
+        title: Text(picking ? 'إضافة وشومات للطلب' : 'إضافة طلب يدوي'),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
@@ -142,8 +162,10 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'اختر الوشومات والكميات للعميل، ثم أكمل معلوماته والتوصيل لتأكيد الطلب.',
+                Text(
+                  picking
+                      ? 'اختر الوشومات والكميات، ثم احفظ التعديلات من تفاصيل الطلب.'
+                      : 'اختر الوشومات والكميات للعميل، ثم أكمل معلوماته والتوصيل لتأكيد الطلب.',
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -227,7 +249,9 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                   onPressed: saving || selected.isEmpty ? null : create,
                   icon: const Icon(Icons.arrow_forward),
                   label: Text(
-                    saving
+                    picking
+                        ? 'إضافة إلى الطلب'
+                        : saving
                         ? 'جاري إنشاء الطلب…'
                         : requestToken != null
                         ? 'إعادة المحاولة'
@@ -276,11 +300,21 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                       ),
                       trailing: IconButton(
                         tooltip: 'إضافة ${product.displayName}',
-                        onPressed: locked || selected.containsKey(product.id)
+                        onPressed:
+                            locked ||
+                                selected.containsKey(product.id) ||
+                                (widget.existingProductIds?.contains(
+                                      product.id,
+                                    ) ??
+                                    false)
                             ? null
                             : () => add(product),
                         icon: Icon(
-                          selected.containsKey(product.id)
+                          selected.containsKey(product.id) ||
+                                  (widget.existingProductIds?.contains(
+                                        product.id,
+                                      ) ??
+                                      false)
                               ? Icons.check
                               : Icons.add,
                         ),

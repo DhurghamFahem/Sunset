@@ -5,6 +5,7 @@ import '../app_scope.dart';
 import '../config.dart';
 import '../models/catalog.dart';
 import '../models/order.dart';
+import 'admin/manual_order_screen.dart';
 import 'widgets/common.dart';
 
 class OrderScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class OrderScreen extends StatefulWidget {
 
 class _OrderScreenState extends State<OrderScreen> {
   late TattooOrder order = widget.order;
+  late List<OrderItem> items = List.of(order.items);
+  final retiredControllers = <TextEditingController>[];
   final form = GlobalKey<FormState>();
   late final phone = TextEditingController(text: order.phone);
   late final governorate = TextEditingController(text: order.governorate);
@@ -64,6 +67,7 @@ class _OrderScreenState extends State<OrderScreen> {
       ...originals,
       ...prices,
       ...accepted,
+      ...retiredControllers,
     ]) {
       c.dispose();
     }
@@ -71,9 +75,9 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   List<OrderItem> draftItems() => [
-    for (var n = 0; n < order.items.length; n++)
+    for (var n = 0; n < items.length; n++)
       OrderItem.fromJson({
-        ...order.items[n].toJson(),
+        ...items[n].toJson(),
         'quantity': int.tryParse(quantities[n].text) ?? 0,
         'original_price': int.tryParse(originals[n].text),
         'unit_price': int.tryParse(prices[n].text),
@@ -86,6 +90,51 @@ class _OrderScreenState extends State<OrderScreen> {
     'delivery_cost': int.tryParse(delivery.text) ?? 0,
     'final_total': int.tryParse(finalPrice.text),
   });
+
+  Future<void> addItems() async {
+    final additions = await Navigator.push<List<OrderItem>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ManualOrderScreen(
+          existingProductIds: items.map((i) => i.productId).toSet(),
+        ),
+      ),
+    );
+    if (!mounted || additions == null) return;
+    setState(() {
+      for (final addition in additions) {
+        // Re-adding an unsaved removal retains the original order snapshot.
+        final item =
+            order.items
+                .where((i) => i.productId == addition.productId)
+                .firstOrNull ??
+            addition;
+        items.add(item);
+        quantities.add(TextEditingController(text: '${addition.quantity}'));
+        originals.add(
+          TextEditingController(text: item.originalPrice?.toString() ?? ''),
+        );
+        prices.add(
+          TextEditingController(text: item.unitPrice?.toString() ?? ''),
+        );
+        accepted.add(TextEditingController(text: '0'));
+      }
+      finalPrice.clear();
+      error = null;
+    });
+  }
+
+  void removeItem(int index) {
+    setState(() {
+      items.removeAt(index);
+      for (final controllers in [quantities, originals, prices, accepted]) {
+        // Keep removed controllers alive until their fields have unmounted.
+        retiredControllers.add(controllers.removeAt(index));
+      }
+      finalPrice.clear();
+      error = null;
+    });
+  }
 
   Future<void> copyMessage() async {
     try {
@@ -104,6 +153,10 @@ class _OrderScreenState extends State<OrderScreen> {
 
   Future<void> save(OrderStatus target) async {
     if (busy) return;
+    if (target != OrderStatus.cancelled && items.isEmpty) {
+      setState(() => error = 'أضف وشماً واحداً على الأقل للطلب');
+      return;
+    }
     if (target != OrderStatus.cancelled && !form.currentState!.validate()) {
       return;
     }
@@ -151,9 +204,24 @@ class _OrderScreenState extends State<OrderScreen> {
       if (!mounted) return;
       setState(() {
         order = saved;
-        for (var n = 0; n < saved.items.length; n++) {
-          accepted[n].text = '${saved.items[n].acceptedQuantity}';
+        items = List.of(saved.items);
+        // Cancellation discards any unsaved additions/removals too.
+        for (final controllers in [quantities, originals, prices, accepted]) {
+          retiredControllers.addAll(controllers);
+          controllers.clear();
         }
+        for (var n = 0; n < saved.items.length; n++) {
+          final item = saved.items[n];
+          quantities.add(TextEditingController(text: '${item.quantity}'));
+          originals.add(
+            TextEditingController(text: item.originalPrice?.toString() ?? ''),
+          );
+          prices.add(
+            TextEditingController(text: item.unitPrice?.toString() ?? ''),
+          );
+          accepted.add(TextEditingController(text: '${item.acceptedQuantity}'));
+        }
+        finalPrice.text = saved.finalTotal?.toString() ?? '';
       });
       if (previous == OrderStatus.pending &&
           saved.status == OrderStatus.confirmed) {
@@ -251,20 +319,40 @@ class _OrderScreenState extends State<OrderScreen> {
                     ),
                   ),
                 Text('الوشومات', style: Theme.of(context).textTheme.titleLarge),
+                if (editable) ...[
+                  OutlinedButton.icon(
+                    onPressed: busy || items.length >= 100 ? null : addItems,
+                    icon: const Icon(Icons.add),
+                    label: const Text('إضافة وشومات'),
+                  ),
+                  const Text(
+                    'يمكن تغيير الوشومات قبل الشحن. عند الإضافة أو الإزالة يُعاد حساب المبلغ النهائي؛ يمكنك إدخال الخصم مجدداً أدناه.',
+                  ),
+                ],
                 const SizedBox(height: 12),
-                for (var n = 0; n < order.items.length; n++)
+                for (var n = 0; n < items.length; n++)
                   Card(
+                    key: ValueKey('order-item-${items[n].productId}'),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            order.items[n].displayName,
+                            items[n].displayName,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          if (staff && order.items[n].code.isNotEmpty)
-                            Text('رمز الوشم: ${order.items[n].code}'),
+                          if (staff && items[n].code.isNotEmpty)
+                            Text('رمز الوشم: ${items[n].code}'),
+                          if (editable)
+                            Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: IconButton(
+                                tooltip: 'إزالة ${items[n].displayName}',
+                                onPressed: busy ? null : () => removeItem(n),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ),
                           const SizedBox(height: 12),
                           if (staff && order.status.editable) ...[
                             field(
@@ -278,7 +366,7 @@ class _OrderScreenState extends State<OrderScreen> {
                               'السعر الأصلي للقطعة',
                               originals[n],
                               numeric: true,
-                              enabled: order.items[n].originalPrice == null,
+                              enabled: items[n].originalPrice == null,
                             ),
                             field(
                               'سعر القطعة بعد الخصم',
@@ -287,7 +375,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             ),
                           ] else
                             Text(
-                              'الكمية: ${order.items[n].quantity} • ${order.items[n].unitPrice == null ? 'بانتظار التسعير' : AppConfig.money(order.items[n].unitPrice!)} / قطعة',
+                              'الكمية: ${items[n].quantity} • ${items[n].unitPrice == null ? 'بانتظار التسعير' : AppConfig.money(items[n].unitPrice!)} / قطعة',
                             ),
                           if (order.status == OrderStatus.shipped)
                             field(
@@ -304,7 +392,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             OrderStatus.rejected,
                           ].contains(order.status))
                             Text(
-                              'المستلم: ${order.items[n].acceptedQuantity} من ${order.items[n].quantity}',
+                              'المستلم: ${items[n].acceptedQuantity} من ${items[n].quantity}',
                             ),
                         ],
                       ),
