@@ -21,6 +21,61 @@ void main() {
     'area': 'المنصور',
     'status': 'confirmed',
   };
+  test(
+    'delivery upload preserves details and follows staff permissions',
+    () async {
+      final token = newOrderToken();
+      var order = await repo.create(token, {'1': 1});
+      expect(order.landmark, isEmpty);
+      expect(order.deliveryNotes, isEmpty);
+      await expectLater(
+        repo.save(order, {'status': 'uploaded'}),
+        throwsA(isA<OrderException>()),
+      );
+      order = await repo.save(order, {
+        ...details,
+        'landmark': 'قرب جامع الرحمن',
+        'delivery_notes': 'الاتصال قبل الوصول',
+      });
+      await expectLater(
+        repo.save(order, {'status': 'uploaded'}, token: token),
+        throwsA(isA<OrderException>()),
+      );
+      await expectLater(
+        repo.save(order, {'status': 'packed'}),
+        throwsA(isA<OrderException>()),
+      );
+      order = await repo.save(order, {'status': 'uploaded'});
+      expect(
+        (await repo.list(status: OrderStatus.uploaded)).single.id,
+        order.id,
+      );
+      expect(
+        (await repo.get(order.id, token: token)).landmark,
+        'قرب جامع الرحمن',
+      );
+      expect(
+        order.bookingMessage,
+        contains('ملاحظات للمندوب: الاتصال قبل الوصول'),
+      );
+      for (final key in ['landmark', 'delivery_notes']) {
+        await expectLater(
+          repo.save(order, {key: 'changed'}, token: token),
+          throwsA(isA<OrderException>()),
+        );
+      }
+      order = await repo.save(order, {'delivery_notes': 'الاتصال مرتين'});
+      order = await repo.save(order, {'status': 'packed'});
+      order = await repo.save(order, {'status': 'shipped'});
+      for (final key in ['landmark', 'delivery_notes']) {
+        await expectLater(
+          repo.save(order, {key: 'changed'}),
+          throwsA(isA<OrderException>()),
+        );
+      }
+      expect(order.deliveryNotes, 'الاتصال مرتين');
+    },
+  );
   test('unnamed order items display codes while preserving snapshots', () {
     for (final name in [null, '', '  \t\n']) {
       final item = OrderItem.fromJson({
@@ -251,6 +306,7 @@ void main() {
         repo.save(order, {'status': 'delivered'}),
         throwsA(isA<OrderException>()),
       );
+      order = await repo.save(order, {'status': 'uploaded'});
       order = await repo.save(order, {'status': 'packed'});
       order = await repo.save(order, {'status': 'shipped'});
       await expectLater(
@@ -289,12 +345,16 @@ void main() {
       for (final state in [
         OrderStatus.pending,
         OrderStatus.confirmed,
+        OrderStatus.uploaded,
         OrderStatus.packed,
       ]) {
         final token = newOrderToken();
         var order = await repo.create(token, {'1': 2});
         if (state != OrderStatus.pending) {
           order = await repo.save(order, details);
+        }
+        if ([OrderStatus.uploaded, OrderStatus.packed].contains(state)) {
+          order = await repo.save(order, {'status': 'uploaded'});
         }
         if (state == OrderStatus.packed) {
           order = await repo.save(order, {'status': 'packed'});
@@ -305,6 +365,7 @@ void main() {
       for (final state in [OrderStatus.delivered, OrderStatus.rejected]) {
         var order = await repo.create(newOrderToken(), {'1': 2});
         order = await repo.save(order, details);
+        order = await repo.save(order, {'status': 'uploaded'});
         order = await repo.save(order, {'status': 'packed'});
         order = await repo.save(order, {'status': 'shipped'});
         order = await repo.save(order, {'status': state.name});
@@ -340,6 +401,7 @@ void main() {
       final token = newOrderToken();
       var order = await repo.create(token, {'1': 3});
       order = await repo.save(order, details);
+      order = await repo.save(order, {'status': 'uploaded'});
       order = await repo.save(order, {'status': 'packed'});
       order = await repo.save(order, {'status': 'shipped'});
       await expectLater(

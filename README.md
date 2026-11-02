@@ -125,6 +125,8 @@ Extra images are stored in the ordered `additional_images` array, with `image_ur
 
 ## Run locally
 
+Order delivery updates require `supabase/migrations/202611020001_order_delivery_details.sql` (after earlier migrations) before releasing the updated app. Orders now move from **مؤكد** to **مرفوع للتوصيل**, then packing and shipping. Staff record the governorate, area, nearest landmark and optional **ملاحظات للمندوب**; landmark and courier notes are included in copied booking details. Existing orders keep their addresses, with the new fields initially blank. The upload status records a manual delivery-company upload; it does not upload to a courier service automatically.
+
 ```sh
 flutter run -d chrome --dart-define-from-file=config.local.json
 ```

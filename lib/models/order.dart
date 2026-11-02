@@ -4,6 +4,7 @@ import 'catalog.dart';
 enum OrderStatus {
   pending('بانتظار التأكيد'),
   confirmed('مؤكد'),
+  uploaded('مرفوع للتوصيل'),
   packed('تم التغليف'),
   shipped('تم الشحن'),
   delivered('تم الاستلام'),
@@ -14,10 +15,11 @@ enum OrderStatus {
   const OrderStatus(this.label);
 
   final String label;
-  bool get editable => [pending, confirmed, packed].contains(this);
+  bool get editable => [pending, confirmed, uploaded, packed].contains(this);
   List<OrderStatus> get next => switch (this) {
     pending => [confirmed, cancelled],
-    confirmed => [packed, cancelled],
+    confirmed => [uploaded, cancelled],
+    uploaded => [packed, cancelled],
     packed => [shipped, cancelled],
     shipped => [delivered, partial, rejected],
     _ => [],
@@ -92,12 +94,15 @@ class TattooOrder {
     this.phone = '',
     this.governorate = '',
     this.area = '',
+    this.landmark = '',
+    this.deliveryNotes = '',
     this.customerName = '',
     this.username = '',
     this.source = OrderSource.instagram,
     this.employeeId,
   });
   final String id, code, phone, governorate, area, customerName, username;
+  final String landmark, deliveryNotes;
   final OrderStatus status;
   final OrderSource source;
   final DateTime createdAt;
@@ -146,6 +151,8 @@ class TattooOrder {
     phone: j['phone'] ?? '',
     governorate: j['governorate'] ?? '',
     area: j['area'] ?? '',
+    landmark: j['landmark'] ?? '',
+    deliveryNotes: j['delivery_notes'] ?? '',
     customerName: j['customer_name'] ?? '',
     username: j['username'] ?? '',
     source: OrderSource.values.byName(j['source'] ?? 'instagram'),
@@ -163,6 +170,8 @@ class TattooOrder {
     'phone': phone,
     'governorate': governorate,
     'area': area,
+    'landmark': landmark,
+    'delivery_notes': deliveryNotes,
     'customer_name': customerName,
     'username': username,
     'source': source.name,
@@ -175,6 +184,8 @@ class TattooOrder {
     if (customerName.isNotEmpty) 'أهلاً $customerName',
     'الهاتف: $phone',
     'العنوان: $governorate — $area',
+    if (landmark.isNotEmpty) 'أقرب نقطة دالة: $landmark',
+    if (deliveryNotes.isNotEmpty) 'ملاحظات للمندوب: $deliveryNotes',
     '',
     ...items.map(
       (i) =>

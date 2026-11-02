@@ -156,7 +156,9 @@ void main() {
 
     await fill('رقم الهاتف *', '07701234567');
     await fill('المحافظة *', 'بغداد');
-    await fill('المنطقة والعنوان التفصيلي *', 'المنصور');
+    await fill('المنطقة *', 'المنصور');
+    await fill('أقرب نقطة دالة', 'قرب جامع الرحمن');
+    await fill('ملاحظات للمندوب (اختياري)', 'الاتصال قبل الوصول');
     final source = find.byType(DropdownButtonFormField<OrderSource>);
     expect(
       tester.widget<DropdownButtonFormField<OrderSource>>(source).initialValue,
@@ -182,10 +184,21 @@ void main() {
     expect(copied, isNot(contains('إجمالي الخصم:')));
     expect((await app.orders.get(order.id)).source, OrderSource.instagram);
     expect((await app.orders.get(order.id)).items.single.code, fixture(1).code);
+    expect(copied, contains('أقرب نقطة دالة: قرب جامع الرحمن'));
+    expect(copied, contains('ملاحظات للمندوب: الاتصال قبل الوصول'));
+    final upload = find.widgetWithText(FilledButton, 'مرفوع للتوصيل');
+    await tester.ensureVisible(upload);
+    await tester.pumpAndSettle();
+    await tester.tap(upload);
+    await tester.pumpAndSettle();
+    final uploaded = await app.orders.get(order.id);
+    expect(uploaded.status, OrderStatus.uploaded);
+    expect(uploaded.landmark, 'قرب جامع الرحمن');
+    expect(uploaded.deliveryNotes, 'الاتصال قبل الوصول');
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(
-      find.text('${order.code} • ${OrderStatus.confirmed.label}'),
+      find.text('${order.code} • ${OrderStatus.uploaded.label}'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -288,7 +301,9 @@ void main() {
       await fill('سعر القطعة بعد الخصم', '4000');
       await fill('رقم الهاتف *', '07701234567');
       await fill('المحافظة *', 'بغداد');
-      await fill('المنطقة والعنوان التفصيلي *', 'المنصور');
+      await fill('المنطقة *', 'المنصور');
+      await fill('أقرب نقطة دالة', 'قرب جامع الرحمن');
+      await fill('ملاحظات للمندوب (اختياري)', 'الاتصال قبل الوصول');
       await fill('المبلغ النهائي (اتركه فارغاً للحساب التلقائي)', '15000');
       final button = find.text('تأكيد الطلب ونسخ الرسالة');
       await tester.scrollUntilVisible(

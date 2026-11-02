@@ -45,13 +45,15 @@ do $$
 declare o jsonb; bad jsonb; denied boolean; items jsonb; stats jsonb;
 begin
   o := public.create_selection_order('40000000-0000-4000-8000-000000000093', '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":3}]');
-  o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07701234567","governorate":"Baghdad","area":"Mansour"}');
+  o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07701234567","governorate":"Baghdad","area":"Mansour","landmark":" Mosque nearby ","delivery_notes":" Call before arrival "}');
   if o->>'status' <> 'confirmed' then raise exception 'Employee booking failed'; end if;
+  if o->>'landmark' <> 'Mosque nearby' or o->>'delivery_notes' <> 'Call before arrival' then raise exception 'Delivery details not saved and trimmed'; end if;
   if o->'items'->0->>'code' is distinct from '99993' then raise exception 'Tattoo code lost after confirmation'; end if;
   items := jsonb_set(o->'items', '{0,unit_price}', '4000');
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer,
     jsonb_build_object('items', items, 'final_total', 14000, 'employee_id', '30000000-0000-4000-8000-000000000093'));
-  foreach bad in array array['{"final_total":18000}'::jsonb, '{"final_total":-1}', '{"status":"delivered"}',
+  foreach bad in array array['{"final_total":18000}'::jsonb, '{"final_total":-1}', '{"status":"delivered"}', '{"status":"packed"}',
+    jsonb_build_object('landmark', repeat('x', 301)), jsonb_build_object('delivery_notes', repeat('x', 1001)),
     jsonb_build_object('items', jsonb_set(items, '{0,original_price}', '6000')),
     jsonb_build_object('items', jsonb_set(items, '{0,quantity}', '1.5'))] loop
     denied := false;
@@ -61,9 +63,12 @@ begin
   denied := false;
   begin perform public.update_selection_order((o->>'id')::uuid, 1, '{"status":"packed"}'); exception when raise_exception then denied := true; end;
   if not denied then raise exception 'Stale version allowed'; end if;
+  o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"uploaded"}');
+  if o->>'status' <> 'uploaded' or o->>'delivery_notes' <> 'Call before arrival' then raise exception 'Delivery upload lost details'; end if;
+  if not exists(select 1 from public.list_selection_orders('', 'uploaded') r where r->>'id' = o->>'id') then raise exception 'Uploaded status filter failed'; end if;
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"packed"}');
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"shipped"}');
-  foreach bad in array array['{"status":"cancelled"}'::jsonb, '{"final_total":100}', '{"status":"partial"}',
+  foreach bad in array array['{"status":"cancelled"}'::jsonb, '{"final_total":100}', '{"status":"partial"}', '{"landmark":"changed"}', '{"delivery_notes":"changed"}',
     jsonb_build_object('items', jsonb_set(items, '{0,quantity}', '4'))] loop
     denied := false;
     begin perform public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, bad); exception when raise_exception then denied := true; end;
@@ -90,8 +95,9 @@ set local role authenticated;
 do $$ declare o jsonb; begin
   o := public.create_selection_order('40000000-0000-4000-8000-000000000094', '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":2}]');
   o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07709876543","governorate":"Baghdad","area":"Mansour"}');
-  o := public.update_selection_order((o->>'id')::uuid, 2, '{"status":"packed"}');
-  perform public.update_selection_order((o->>'id')::uuid, 3, '{"status":"shipped"}');
+  o := public.update_selection_order((o->>'id')::uuid, 2, '{"status":"uploaded"}');
+  o := public.update_selection_order((o->>'id')::uuid, 3, '{"status":"packed"}');
+  perform public.update_selection_order((o->>'id')::uuid, 4, '{"status":"shipped"}');
 end $$;
 reset role;
 set local request.jwt.claim.sub = '';
@@ -99,11 +105,11 @@ set local role anon;
 do $$ declare o jsonb; denied boolean := false; token uuid := '40000000-0000-4000-8000-000000000094'; begin
   o := public.create_selection_order(token, '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":2}]');
   begin
-    perform public.update_selection_order((o->>'id')::uuid, 4,
+    perform public.update_selection_order((o->>'id')::uuid, 5,
       jsonb_build_object('status', 'partial', 'items', jsonb_set(jsonb_set(o->'items', '{0,unit_price}', '1'), '{0,accepted_quantity}', '1')), token);
   exception when raise_exception then denied := true; end;
   if not denied then raise exception 'Customer changed shipped price'; end if;
-  o := public.update_selection_order((o->>'id')::uuid, 4, '{"status":"delivered"}', token);
+  o := public.update_selection_order((o->>'id')::uuid, 5, '{"status":"delivered"}', token);
   if (o->'items'->0->>'accepted_quantity')::integer <> 2 then raise exception 'Full customer receipt failed'; end if;
   for n in 1..50 loop
     perform public.create_selection_order(gen_random_uuid(), '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":1}]');

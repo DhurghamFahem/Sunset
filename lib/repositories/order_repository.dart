@@ -261,6 +261,8 @@ class MemoryOrderRepository implements OrderRepository {
         'phone',
         'governorate',
         'area',
+        'landmark',
+        'delivery_notes',
         'customer_name',
         'username',
         'source',
@@ -282,6 +284,9 @@ class MemoryOrderRepository implements OrderRepository {
       ...changes,
       'version': old.version + 1,
     });
+    if (next.landmark.length > 300 || next.deliveryNotes.length > 1000) {
+      throw const OrderException('النقطة الدالة أو ملاحظات المندوب طويلة جداً');
+    }
     if (next.status != old.status && !old.status.next.contains(next.status)) {
       throw const OrderException('تغيير الحالة غير مسموح');
     }

@@ -21,6 +21,8 @@ class _OrderScreenState extends State<OrderScreen> {
   late final phone = TextEditingController(text: order.phone);
   late final governorate = TextEditingController(text: order.governorate);
   late final area = TextEditingController(text: order.area);
+  late final landmark = TextEditingController(text: order.landmark);
+  late final deliveryNotes = TextEditingController(text: order.deliveryNotes);
   late final name = TextEditingController(text: order.customerName);
   late final username = TextEditingController(text: order.username);
   late final delivery = TextEditingController(text: '${order.deliveryCost}');
@@ -76,6 +78,8 @@ class _OrderScreenState extends State<OrderScreen> {
       phone,
       governorate,
       area,
+      landmark,
+      deliveryNotes,
       name,
       username,
       delivery,
@@ -148,6 +152,8 @@ class _OrderScreenState extends State<OrderScreen> {
             'phone': phone.text.trim(),
             'governorate': governorate.text.trim(),
             'area': area.text.trim(),
+            'landmark': landmark.text.trim(),
+            'delivery_notes': deliveryNotes.text.trim(),
             'customer_name': name.text.trim(),
             'username': username.text.trim(),
             'source': source.name,
@@ -199,6 +205,7 @@ class _OrderScreenState extends State<OrderScreen> {
     bool required = false,
     bool numeric = false,
     int maxLength = 120,
+    int maxLines = 1,
     bool? enabled,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -206,10 +213,13 @@ class _OrderScreenState extends State<OrderScreen> {
       controller: controller,
       enabled: !busy && (enabled ?? editable),
       maxLength: maxLength,
+      maxLines: maxLines,
       keyboardType: controller == phone
           ? TextInputType.phone
           : numeric
           ? TextInputType.number
+          : maxLines > 1
+          ? TextInputType.multiline
           : TextInputType.text,
       decoration: InputDecoration(labelText: label, counterText: ''),
       onChanged: (_) => setState(() {}),
@@ -333,7 +343,14 @@ class _OrderScreenState extends State<OrderScreen> {
                   const SizedBox(height: 16),
                   field('رقم الهاتف *', phone, maxLength: 26),
                   field('المحافظة *', governorate),
-                  field('المنطقة والعنوان التفصيلي *', area, maxLength: 300),
+                  field('المنطقة *', area, maxLength: 300),
+                  field('أقرب نقطة دالة', landmark, maxLength: 300),
+                  field(
+                    'ملاحظات للمندوب (اختياري)',
+                    deliveryNotes,
+                    maxLength: 1000,
+                    maxLines: 3,
+                  ),
                   field('اسم العميل (اختياري)', name),
                   field('اسم المستخدم (اختياري)', username),
                   DropdownButtonFormField<OrderSource>(
