@@ -6,6 +6,7 @@ import '../../app_scope.dart';
 import '../../config.dart';
 import '../../models/catalog.dart';
 import '../../models/order.dart';
+import '../../repositories/order_repository.dart';
 import '../order_screen.dart';
 import '../widgets/common.dart';
 import 'manual_order_screen.dart';
@@ -250,14 +251,16 @@ class _OrderManagementState extends State<OrderManagement> {
                 Card(
                   child: ListTile(
                     title: Text(employee.name),
-                    subtitle: Text(employee.phone),
+                    subtitle: Text(
+                      '${employee.phone}\n${employee.email.isEmpty ? 'لم يُضف حساب دخول بعد' : employee.email}',
+                    ),
                     trailing: const Icon(Icons.edit_outlined),
                     onTap: () => editEmployee(employee),
                   ),
                 ),
               const SizedBox(height: 20),
               const Text(
-                'أداء جميع الأوقات • حسب الموظف المسؤول عن الطلب. قيمة المستلم تشمل التوصيل مرة واحدة وتوزّع الخصم الإضافي على القطع بالتناسب.',
+                'أداء جميع الأوقات • حسب منشئ الطلب. قيمة المستلم تشمل التوصيل مرة واحدة وتوزّع الخصم الإضافي على القطع بالتناسب.',
               ),
               const SizedBox(height: 12),
               for (final row in performance)
@@ -310,6 +313,10 @@ class EmployeeEditor extends StatefulWidget {
 class _EmployeeEditorState extends State<EmployeeEditor> {
   late final name = TextEditingController(text: widget.employee?.name);
   late final phone = TextEditingController(text: widget.employee?.phone);
+  late final email = TextEditingController(text: widget.employee?.email);
+  final password = TextEditingController();
+  late final employeeId = widget.employee?.id ?? newOrderToken();
+  bool get needsLogin => widget.employee?.userId == null;
   final form = GlobalKey<FormState>();
   bool busy = false;
   String? error;
@@ -317,6 +324,8 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
   void dispose() {
     name.dispose();
     phone.dispose();
+    email.dispose();
+    password.dispose();
     super.dispose();
   }
 
@@ -325,16 +334,20 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
     setState(() => busy = true);
     try {
       await AppScope.of(context).orders.saveEmployee(
-        id: widget.employee?.id,
+        id: employeeId,
         name: name.text,
         phone: phone.text,
+        email: email.text,
+        password: needsLogin ? password.text : null,
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           busy = false;
-          error = 'تعذر حفظ الموظف. حاول مرة ثانية.';
+          error = e is OrderException
+              ? e.message
+              : 'تعذر حفظ الموظف. حاول مرة ثانية.';
         });
       }
     }
@@ -361,6 +374,41 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(labelText: 'رقم الهاتف'),
               validator: (v) => validatePhone(v ?? ''),
+            ),
+            TextFormField(
+              controller: email,
+              maxLength: 254,
+              readOnly: !needsLogin,
+              keyboardType: TextInputType.emailAddress,
+              textDirection: TextDirection.ltr,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'البريد الإلكتروني للدخول',
+              ),
+              validator: (v) =>
+                  RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                      .hasMatch(v?.trim() ?? '')
+                  ? null
+                  : 'أدخل بريداً إلكترونياً صحيحاً',
+            ),
+            if (needsLogin)
+              TextFormField(
+                controller: password,
+                maxLength: 128,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'كلمة المرور',
+                  helperText: '8 أحرف على الأقل',
+                ),
+                validator: (v) => (v?.length ?? 0) >= 8
+                    ? null
+                    : 'أدخل كلمة مرور من 8 أحرف على الأقل',
+              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text('صلاحيات الموظف: الطلبات وصور الزبون فقط.'),
             ),
             if (error != null) Text(error!),
           ],

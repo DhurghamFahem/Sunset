@@ -7,7 +7,6 @@ set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000093';
 insert into public.products(id, code, name_ar, image_url, width_cm, height_cm, price)
   values ('20000000-0000-4000-8000-000000000093', '99993', 'Order flower', 'https://example.invalid/flower.png', 5, 8, 5000);
 insert into public.product_categories(product_id, category_id) values ('20000000-0000-4000-8000-000000000093', '10000000-0000-4000-8000-000000000093');
-insert into public.employees(id, name, phone) values ('30000000-0000-4000-8000-000000000093', 'Test employee', '07701234567');
 update public.order_settings set delivery_cost = 5000;
 reset role;
 set local request.jwt.claim.sub = '';
@@ -51,7 +50,7 @@ begin
   if o->'items'->0->>'code' is distinct from '99993' then raise exception 'Tattoo code lost after confirmation'; end if;
   items := jsonb_set(o->'items', '{0,unit_price}', '4000');
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer,
-    jsonb_build_object('items', items, 'final_total', 14000, 'employee_id', '30000000-0000-4000-8000-000000000093'));
+    jsonb_build_object('items', items, 'final_total', 14000));
   foreach bad in array array['{"final_total":18000}'::jsonb, '{"final_total":-1}', '{"status":"delivered"}', '{"status":"packed"}',
     jsonb_build_object('landmark', repeat('x', 301)), jsonb_build_object('delivery_notes', repeat('x', 1001)),
     jsonb_build_object('items', jsonb_set(items, '{0,original_price}', '6000')),
@@ -76,8 +75,8 @@ begin
   end loop;
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer,
     jsonb_build_object('status', 'partial', 'items', jsonb_set(items, '{0,accepted_quantity}', '1')));
-  select value into stats from public.order_employee_performance() value where value->>'name' = 'Test employee';
-  if (stats->>'revenue')::integer <> 8000 or (stats->>'accepted_pieces')::integer <> 1 then raise exception 'Partial reporting mismatch: %', stats; end if;
+  select value into stats from public.order_employee_performance() value where value->>'name' = 'الزبون / الإدارة / غير مرتبط';
+  if stats is null or (stats->>'revenue')::integer <> 8000 or (stats->>'accepted_pieces')::integer <> 1 then raise exception 'Partial reporting mismatch: %', stats; end if;
   denied := false;
   begin perform public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"partial"}'); exception when raise_exception then denied := true; end;
   if not denied then raise exception 'Terminal order modified'; end if;

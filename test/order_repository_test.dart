@@ -294,14 +294,8 @@ void main() {
     'packing, shipping, partial acceptance, reporting and terminal states',
     () async {
       await repo.setDeliveryCost(5000);
-      await repo.saveEmployee(name: 'موظف', phone: '07701234567');
-      final employee = (await repo.employees()).single;
       var order = await repo.create(newOrderToken(), {'1': 3});
-      order = await repo.save(order, {
-        ...details,
-        'employee_id': employee.id,
-        'final_total': 17000,
-      });
+      order = await repo.save(order, {...details, 'final_total': 17000});
       await expectLater(
         repo.save(order, {'status': 'delivered'}),
         throwsA(isA<OrderException>()),
@@ -329,7 +323,7 @@ void main() {
       });
       expect(order.acceptedTotal, 9000);
       final stats = (await repo.performance()).singleWhere(
-        (r) => r['name'] == employee.name,
+        (r) => r['name'] == 'بدون موظف',
       );
       expect(stats['revenue'], 9000);
       expect(stats['accepted_pieces'], 1);

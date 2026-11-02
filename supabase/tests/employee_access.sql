@@ -10,8 +10,8 @@ insert into public.products(id, code, name_ar, image_url, width_cm, height_cm, p
   values ('20000000-0000-4000-8000-000000000101', 'EMPLOYEE-TEST-101', 'Employee test', 'https://example.invalid/test.png', 5, 8, 5000);
 insert into public.product_categories(product_id, category_id)
   values ('20000000-0000-4000-8000-000000000101', '10000000-0000-4000-8000-000000000101');
-insert into public.employees(id, name, phone)
-  values ('30000000-0000-4000-8000-000000000101', 'Employee test', '07701234567');
+insert into public.employees(id, name, phone, user_id)
+  values ('30000000-0000-4000-8000-000000000101', 'Employee test', '07701234567', '00000000-0000-4000-8000-000000000101');
 
 set local role authenticated;
 set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000101';
@@ -22,10 +22,11 @@ do $$ declare o jsonb; result jsonb; affected integer; begin
   if not exists(select 1 from public.list_selection_orders('') x where x->>'id' = o->>'id') then raise exception 'Employee cannot list orders'; end if;
   result := public.get_selection_order((o->>'id')::uuid);
   if result <> o then raise exception 'Employee cannot read order'; end if;
-  o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07701234567","governorate":"Baghdad","area":"Mansour","employee_id":"30000000-0000-4000-8000-000000000101"}');
+  o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07701234567","governorate":"Baghdad","area":"Mansour"}');
   if o->>'status' <> 'confirmed' then raise exception 'Employee cannot confirm'; end if;
   if not exists(select 1 from public.order_events where order_id=(o->>'id')::uuid and actor_kind='employee' and actor_id=auth.uid()) then raise exception 'Employee audit missing'; end if;
-  if not exists(select 1 from public.employees where id='30000000-0000-4000-8000-000000000101') then raise exception 'Assignment picker unavailable'; end if;
+  if o->>'created_by' <> auth.uid()::text or o->>'created_by_name' <> 'Employee test' then raise exception 'Creator missing'; end if;
+  if exists(select 1 from public.employees) then raise exception 'Employee can read login directory'; end if;
   if not exists(select 1 from public.catalog_products where id='20000000-0000-4000-8000-000000000101') then raise exception 'Customer images unavailable'; end if;
 
   begin
@@ -67,9 +68,10 @@ do $$ declare o jsonb; result jsonb; affected integer; begin
   update public.order_settings set delivery_cost=delivery_cost+1;
   get diagnostics affected = row_count;
   if affected <> 0 then raise exception 'Employee can change delivery settings'; end if;
-  update public.employees set name='Forbidden' where id='30000000-0000-4000-8000-000000000101';
-  get diagnostics affected = row_count;
-  if affected <> 0 then raise exception 'Employee can edit assignee'; end if;
+  begin
+    update public.employees set name='Forbidden' where id='30000000-0000-4000-8000-000000000101';
+    raise exception 'Employee can edit employee';
+  exception when insufficient_privilege then null; end;
   delete from public.products where id='20000000-0000-4000-8000-000000000101';
   get diagnostics affected = row_count;
   if affected <> 0 then raise exception 'Employee can delete tattoo'; end if;

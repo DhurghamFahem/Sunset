@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/catalog.dart';
 import '../models/order.dart';
+import '../services/test_admin_service.dart';
 import 'catalog_repository.dart';
 
 String newOrderToken() {
@@ -35,6 +36,8 @@ abstract class OrderRepository {
     String? id,
     required String name,
     required String phone,
+    required String email,
+    String? password,
   });
   Future<int> deliveryCost();
   Future<void> setDeliveryCost(int cost);
@@ -123,12 +126,28 @@ class SupabaseOrderRepository implements OrderRepository {
     String? id,
     required String name,
     required String phone,
+    required String email,
+    String? password,
   }) async {
-    await client.from('employees').upsert({
-      'id': ?id,
-      'name': name.trim(),
-      'phone': phone.trim(),
-    });
+    try {
+      await client.functions.invoke(
+        'save-employee',
+        body: {
+          'id': id ?? newOrderToken(),
+          'name': name.trim(),
+          'phone': phone.trim(),
+          'email': email.trim().toLowerCase(),
+          'password': ?password,
+        },
+      );
+    } on FunctionException catch (e) {
+      final details = e.details;
+      throw OrderException(
+        details is Map && details['error'] is String
+            ? details['error'] as String
+            : 'تعذر حفظ حساب الموظف. حاول مرة ثانية.',
+      );
+    }
   }
 
   @override
@@ -151,15 +170,30 @@ class SupabaseOrderRepository implements OrderRepository {
 
 /// Demo mode uses the same validations, but intentionally has no remote storage.
 class MemoryOrderRepository implements OrderRepository {
-  MemoryOrderRepository(this.catalog);
+  MemoryOrderRepository(this.catalog, {this.demoAdmin});
+  final TestAdminService? demoAdmin;
   final CatalogRepository catalog;
   final Map<String, TattooOrder> _orders = {};
   final Map<String, String> _tokens = {};
   final Map<String, Employee> _employees = {};
   int _delivery = 0;
   @override
-  Future<TattooOrder> createManual(String token, Map<String, int> quantities) =>
-      create(token, quantities);
+  Future<TattooOrder> createManual(
+    String token,
+    Map<String, int> quantities,
+  ) async {
+    final existed = _tokens.containsKey(token);
+    final order = await create(token, quantities);
+    if (existed || order.createdBy != null) return order;
+    final employee = demoAdmin?.currentEmployee;
+    return _orders[order.id] = TattooOrder.fromJson({
+      ...order.toJson(),
+      'created_by': employee?.userId ?? 'demo-admin',
+      'created_by_name': employee?.name ?? 'الإدارة',
+      'employee_id': employee?.id,
+    });
+  }
+
   @override
   Future<TattooOrder> create(String token, Map<String, int> quantities) async {
     if (_tokens[token] case final String id) return _orders[id]!;
@@ -188,6 +222,13 @@ class MemoryOrderRepository implements OrderRepository {
       code: code,
       status: OrderStatus.pending,
       createdAt: DateTime.now(),
+      createdBy: demoAdmin?.signedIn == true
+          ? (demoAdmin?.currentEmployee?.userId ?? 'demo-admin')
+          : null,
+      createdByName: demoAdmin?.signedIn == true
+          ? (demoAdmin?.currentEmployee?.name ?? 'الإدارة')
+          : 'الزبون',
+      employeeId: demoAdmin?.currentEmployee?.id,
       deliveryCost: _delivery,
       items: products
           .map(
@@ -266,7 +307,6 @@ class MemoryOrderRepository implements OrderRepository {
         'customer_name',
         'username',
         'source',
-        'employee_id',
       ].contains(k),
     )) {
       throw const OrderException('حقول غير مسموحة');
@@ -341,9 +381,6 @@ class MemoryOrderRepository implements OrderRepository {
         'المبلغ النهائي يجب ألا يتجاوز المجموع بعد خصم القطع',
       );
     }
-    if (next.employeeId != null && !_employees.containsKey(next.employeeId)) {
-      throw const OrderException('الموظف غير موجود');
-    }
     if (![OrderStatus.pending, OrderStatus.cancelled].contains(next.status) &&
         (validatePhone(next.phone) != null ||
             next.governorate.trim().isEmpty ||
@@ -410,12 +447,44 @@ class MemoryOrderRepository implements OrderRepository {
     String? id,
     required String name,
     required String phone,
+    required String email,
+    String? password,
   }) async {
-    if (name.trim().isEmpty || validatePhone(phone) != null) {
+    if (name.trim().isEmpty ||
+        name.trim().length > 120 ||
+        validatePhone(phone) != null) {
       throw const OrderException('أدخل الاسم ورقم هاتف صحيح');
     }
     final key = id ?? newOrderToken();
-    _employees[key] = Employee(id: key, name: name.trim(), phone: phone.trim());
+    final existing = _employees[key];
+    final normalizedEmail = email.trim().toLowerCase();
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(normalizedEmail)) {
+      throw const OrderException('أدخل بريداً إلكترونياً صحيحاً');
+    }
+    if (existing != null && existing.email != normalizedEmail) {
+      throw const OrderException(
+        'لا يمكن تغيير بريد حساب الدخول من هذه الشاشة',
+      );
+    }
+    if (existing == null &&
+        ((password?.length ?? 0) < 8 || password!.length > 128)) {
+      throw const OrderException('أدخل كلمة مرور من 8 أحرف على الأقل');
+    }
+    if (_employees.values.any(
+          (e) => e.id != key && e.email == normalizedEmail,
+        ) ||
+        normalizedEmail == 'test@gmail.com') {
+      throw const OrderException('البريد الإلكتروني مستخدم بالفعل');
+    }
+    final employee = Employee(
+      id: key,
+      name: name.trim(),
+      phone: phone.trim(),
+      email: existing?.email ?? normalizedEmail,
+      userId: existing?.userId ?? newOrderToken(),
+    );
+    demoAdmin?.registerEmployee(employee, existing == null ? password : null);
+    _employees[key] = employee;
   }
 
   @override

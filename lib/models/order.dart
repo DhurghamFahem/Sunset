@@ -39,10 +39,22 @@ enum OrderSource {
 }
 
 class Employee {
-  const Employee({required this.id, required this.name, required this.phone});
-  final String id, name, phone;
-  factory Employee.fromJson(Json j) =>
-      Employee(id: j['id'], name: j['name'], phone: j['phone']);
+  const Employee({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.email = '',
+    this.userId,
+  });
+  final String id, name, phone, email;
+  final String? userId;
+  factory Employee.fromJson(Json j) => Employee(
+    id: j['id'],
+    name: j['name'],
+    phone: j['phone'],
+    email: j['email'] ?? '',
+    userId: j['user_id'],
+  );
 }
 
 class OrderItem {
@@ -100,6 +112,8 @@ class TattooOrder {
     this.username = '',
     this.source = OrderSource.instagram,
     this.employeeId,
+    this.createdBy,
+    this.createdByName = 'غير معروف (طلب سابق)',
   });
   final String id, code, phone, governorate, area, customerName, username;
   final String landmark, deliveryNotes;
@@ -109,7 +123,8 @@ class TattooOrder {
   final List<OrderItem> items;
   final int deliveryCost, version;
   final int? finalTotal;
-  final String? employeeId;
+  final String? employeeId, createdBy;
+  final String createdByName;
   bool get priced =>
       items.every((i) => i.originalPrice != null && i.unitPrice != null);
   int get pieces => items.fold(0, (v, i) => v + i.quantity);
@@ -157,6 +172,8 @@ class TattooOrder {
     username: j['username'] ?? '',
     source: OrderSource.values.byName(j['source'] ?? 'instagram'),
     employeeId: j['employee_id'],
+    createdBy: j['created_by'],
+    createdByName: j['created_by_name'] ?? 'غير معروف (طلب سابق)',
   );
   Json toJson() => {
     'id': id,
@@ -176,6 +193,8 @@ class TattooOrder {
     'username': username,
     'source': source.name,
     'employee_id': employeeId,
+    'created_by': createdBy,
+    'created_by_name': createdByName,
   };
 
   String get bookingMessage => [

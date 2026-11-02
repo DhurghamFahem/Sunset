@@ -4,6 +4,7 @@ import 'repositories/catalog_repository.dart';
 import 'repositories/order_repository.dart';
 import 'repositories/offer_repository.dart';
 import 'services/admin_service.dart';
+import 'services/test_admin_service.dart';
 import 'services/analytics.dart';
 import 'state/selection_store.dart';
 
@@ -15,7 +16,12 @@ class AppServices {
     this.admin,
     OrderRepository? orders,
     OfferRepository? offers,
-  }) : orders = orders ?? MemoryOrderRepository(catalog),
+  }) : orders =
+           orders ??
+           MemoryOrderRepository(
+             catalog,
+             demoAdmin: admin is TestAdminService ? admin : null,
+           ),
        offers = offers ?? MemoryOfferRepository(catalog, admin);
   final CatalogRepository catalog;
   final SelectionStore selection;

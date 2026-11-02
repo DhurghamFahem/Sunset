@@ -44,34 +44,10 @@ class _OrderScreenState extends State<OrderScreen> {
       .map((i) => TextEditingController(text: '${i.acceptedQuantity}'))
       .toList();
   late OrderSource source = order.source;
-  late String? employeeId = order.employeeId;
-  List<Employee> employees = [];
-  bool busy = false, loaded = false;
+  bool busy = false;
   String? error;
   bool get staff => widget.token == null;
   bool get editable => staff && order.status.editable;
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!loaded) {
-      loaded = true;
-      if (staff) loadEmployees();
-    }
-  }
-
-  Future<void> loadEmployees() async {
-    try {
-      final rows = await AppScope.of(context).orders.employees();
-      if (mounted) setState(() => employees = rows);
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => error = 'تعذر تحميل الموظفين. أغلق الطلب وأعد المحاولة.',
-        );
-      }
-    }
-  }
-
   @override
   void dispose() {
     for (final c in [
@@ -163,7 +139,6 @@ class _OrderScreenState extends State<OrderScreen> {
               'items': draftItems().map((i) => i.toJson()).toList(),
               'delivery_cost': int.parse(delivery.text),
               'final_total': int.tryParse(finalPrice.text),
-              'employee_id': employeeId,
             });
           }
         } else if (order.status == OrderStatus.shipped) {
@@ -265,6 +240,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     ),
                   ],
                 ),
+                if (staff) Text('أُنشئ بواسطة: ${order.createdByName}'),
                 if (order.status == OrderStatus.pending)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -367,28 +343,6 @@ class _OrderScreenState extends State<OrderScreen> {
                         : null,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey('${employees.length}-$employeeId'),
-                    initialValue: employees.any((e) => e.id == employeeId)
-                        ? employeeId
-                        : '',
-                    decoration: const InputDecoration(
-                      labelText: 'الموظف المسؤول',
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text('بدون موظف'),
-                      ),
-                      ...employees.map(
-                        (e) =>
-                            DropdownMenuItem(value: e.id, child: Text(e.name)),
-                      ),
-                    ],
-                    onChanged: editable && !busy
-                        ? (v) => setState(() => employeeId = v == '' ? null : v)
-                        : null,
-                  ),
                   const SizedBox(height: 16),
                   field(
                     'كلفة التوصيل',
