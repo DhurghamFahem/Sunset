@@ -422,3 +422,7 @@ verify_jwt = false
 # Server-only scheduler secret is validated by the handler.
 [functions.prime-upload]
 verify_jwt = false
+
+# Auth session and order-staff role are checked inside the handler.
+[functions.prime-locations]
+verify_jwt = false

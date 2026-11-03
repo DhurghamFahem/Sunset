@@ -17,6 +17,8 @@ select public.save_employee_prime_account('30000000-0000-4000-8000-000000000121'
 do $$ begin
   begin perform public.claim_prime_upload(); raise exception 'Client can claim';
   exception when insufficient_privilege then null; end;
+  begin perform public.prime_location_account(gen_random_uuid(),auth.uid()); raise exception 'Client can read lookup credentials';
+  exception when insufficient_privilege then null; end;
   begin perform public.mark_prime_sending(gen_random_uuid(),gen_random_uuid()); raise exception 'Client can send';
   exception when insufficient_privilege then null; end;
   begin perform public.finish_prime_upload(gen_random_uuid(),gen_random_uuid(),'success','123'); raise exception 'Client can finish';
@@ -41,7 +43,13 @@ begin
     '[{"product_id":"20000000-0000-4000-8000-000000000121","quantity":2}]');
   oid := (o->>'id')::uuid;
   if exists(select 1 from private.prime_upload_jobs where order_id=oid) then raise exception 'Pending order queued'; end if;
-  o := public.update_selection_order(oid,1,'{"status":"confirmed","phone":"07701234567","governorate":"بغداد","area":"المنصور"}');
+  o := public.update_selection_order(oid,1,'{"status":"confirmed","phone":"07701234567","governorate":"بغداد","area":"المنصور","prime_state_id":"BGD","prime_district_id":17,"is_paid":true}');
+  if o->>'is_paid' <> 'true' or o->>'prime_state_id' <> 'BGD' or o->>'prime_district_id' <> '17' then raise exception 'Paid/location fields not persisted'; end if;
+  if (public.prime_location_account(oid,'00000000-0000-4000-8000-000000000121')->>'password') <> 'test-secret' then raise exception 'Wrong lookup account'; end if;
+  begin perform public.update_selection_order(oid,2,'{"is_paid":null}');
+    raise check_violation using message='Null payment accepted'; exception when raise_exception then null; end;
+  begin perform public.update_selection_order(oid,2,'{"prime_district_id":null}');
+    raise check_violation using message='Unpaired location accepted'; exception when raise_exception then null; end;
   if (select count(*) from private.prime_upload_jobs where order_id=oid) <> 1 then raise exception 'Queue missing'; end if;
   o := public.update_selection_order(oid,2,'{"delivery_notes":"Call first"}');
   begin perform public.update_selection_order(oid,3,'{"status":"uploaded"}');
@@ -49,6 +57,7 @@ begin
   j := public.claim_prime_upload(); claim := (j->>'claim_token')::uuid;
   if j->'order'->>'id' <> oid::text or j->>'password' <> 'test-secret' or j->>'username' <> 'prime-user' then raise exception 'Wrong credential/order'; end if;
   if (j->'order') ? 'access_token' then raise exception 'Customer token leaked to worker'; end if;
+  if j->'order'->>'is_paid' <> 'true' or j->'order'->>'prime_district_id' <> '17' then raise exception 'Worker missing payment/address'; end if;
   if public.claim_prime_upload() is not null then raise exception 'Concurrent claim duplicated'; end if;
   if public.mark_prime_sending(oid,gen_random_uuid()) then raise exception 'Stale claim accepted'; end if;
   begin perform public.update_selection_order(oid,3,'{"status":"cancelled"}');
@@ -58,6 +67,8 @@ begin
   if not public.finish_prime_upload(oid,claim,'success','987654') then raise exception 'Acknowledgement retry failed'; end if;
   select version into v from public.orders where orders.id=oid and status='uploaded';
   if v is distinct from 4 then raise exception 'Wrong status/version'; end if;
+  begin perform public.update_selection_order(oid,4,'{"is_paid":false}');
+    raise check_violation using message='Payment changed after upload'; exception when raise_exception then null; end;
   select count(*) into event_count from public.order_events where order_id=oid and to_status='uploaded' and actor_kind='system';
   if event_count <> 1 then raise exception 'Wrong audit count'; end if;
   if public.claim_prime_upload() is not null then raise exception 'Successful job repeated'; end if;

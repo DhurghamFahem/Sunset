@@ -114,6 +114,9 @@ class TattooOrder {
     required this.deliveryCost,
     this.version = 1,
     this.finalTotal,
+    this.isPaid = false,
+    this.primeStateId,
+    this.primeDistrictId,
     this.phone = '',
     this.governorate = '',
     this.area = '',
@@ -134,6 +137,9 @@ class TattooOrder {
   final List<OrderItem> items;
   final int deliveryCost, version;
   final int? finalTotal;
+  final bool isPaid;
+  final String? primeStateId;
+  final int? primeDistrictId;
   final String? employeeId, createdBy;
   final String createdByName;
   bool get priced =>
@@ -145,6 +151,8 @@ class TattooOrder {
       items.fold(0, (v, i) => v + (i.unitPrice ?? 0) * i.quantity);
   int get originalTotal => originalSubtotal + deliveryCost;
   int get total => finalTotal ?? subtotal + deliveryCost;
+  int get goodsTotal => (total - deliveryCost).clamp(0, total);
+  int get collectAmount => isPaid ? 0 : total;
   int get itemDiscount => originalSubtotal - subtotal;
   int get extraDiscount => subtotal + deliveryCost - total;
   int get discount => originalTotal - total;
@@ -174,6 +182,9 @@ class TattooOrder {
         .toList(),
     deliveryCost: j['delivery_cost'],
     finalTotal: j['final_total'],
+    isPaid: j['is_paid'] ?? false,
+    primeStateId: j['prime_state_id'],
+    primeDistrictId: j['prime_district_id'],
     phone: j['phone'] ?? '',
     governorate: j['governorate'] ?? '',
     area: j['area'] ?? '',
@@ -195,6 +206,9 @@ class TattooOrder {
     'items': items.map((i) => i.toJson()).toList(),
     'delivery_cost': deliveryCost,
     'final_total': finalTotal,
+    'is_paid': isPaid,
+    'prime_state_id': primeStateId,
+    'prime_district_id': primeDistrictId,
     'phone': phone,
     'governorate': governorate,
     'area': area,
@@ -211,6 +225,7 @@ class TattooOrder {
   String get bookingMessage => [
     '🌿 تم تأكيد طلبك من G2G',
     'رقم الطلب: $code',
+    if (isPaid) 'مدفوع بالكامل — لا يُستحصل مبلغ عند التوصيل',
     if (customerName.isNotEmpty) 'أهلاً $customerName',
     'الهاتف: $phone',
     'العنوان: $governorate — $area',

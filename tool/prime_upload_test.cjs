@@ -45,16 +45,37 @@ async function runApi() {
   assert.deepEqual(requests.slice(-3).map(r => r.path.split('/').pop()), [
     'check-shipment-cost-within-range', 'calculate-shipment-charges', 'create-new-case']);
   const create = requests.at(-1).body, charge = requests.at(-2).body;
-  assert.equal(create.receiverName, 'AB12 - Customer');
+  assert.equal(create.receiverName, 'AB12');
   assert(create.locationDetails.includes(order.id));
   assert.equal(create.receiptAmtIqd, '17000'); assert.equal(create.receiptAmtUsd, '0');
   assert.equal(create.rmk, 'Call first'); assert.equal(create.productsList.length, 1);
-  assert.equal(create.productsList[0].qty, 3); assert.equal(create.productsList[0].itemSellPrice, '4667');
+  assert.equal(create.productsList[0].qty, 3); assert.equal(create.productsList[0].itemSellPrice, '4000');
   assert.equal(typeof create.heightCm, 'number'); assert.equal(typeof charge.heightCm, 'string');
   assert(!('productsList' in charge)); assert.equal(create.district, '17'); assert.equal(create.senderId, 7);
   reset(); overrides['logistics/check-shipment-cost-within-range'] = () => Response.json({}, {status: 422});
   await assert.rejects(runApi, e => e.outcome === 'retry'); assert(!requests.some(r => r.path.endsWith('create-new-case')));
   reset(); overrides['merchant/list-of-shops'] = () => Response.json([{id: 7}, {id: 8}]);
+  overrides['merchant/shop-products/7'] = () => Response.json([
+    {id: 44, name: 'First', heightCm: 10, lengthCm: 5, widthCm: 3},
+    {id: 45, name: 'Tattoo A', heightCm: 10, lengthCm: 5, widthCm: 3},
+  ]);
+  assert.equal(await runApi(), '987654');
+  assert.equal(requests.at(-1).body.senderId, 7);
+  assert.equal(requests.at(-1).body.productsList[0].id, 44);
+  reset();
+  const paidApi = new PrimeClient(transport);
+  const paid = await paidApi.prepare({...order, is_paid: true, prime_state_id: 'BGD', prime_district_id: 17,
+    governorate: 'old label', area: 'old district'}, 'token');
+  assert.equal(paid.receiptAmtIqd, '0'); assert.equal(paid.productsList[0].itemSellPrice, '4000');
+  assert(requests.filter(r => r.path.startsWith('logistics/')).every(r => r.body.receiptAmtIqd === '0'));
+  reset();
+  const normal = await new PrimeClient(transport).prepare({...order, final_total: null}, 'token');
+  assert.equal(normal.receiptAmtIqd, '19000');
+  reset();
+  assert.deepEqual(JSON.parse(JSON.stringify(await paidApi.locations('token'))), [{id: 'BGD', name: 'بغداد'}]);
+  assert.deepEqual(JSON.parse(JSON.stringify(await paidApi.locations('token', 'BGD'))), [{id: '17', name: 'المنصور'}]);
+  await assert.rejects(() => paidApi.locations('token', '../auth/login'));
+  reset(); overrides['merchant/list-of-shops'] = () => Response.json([]);
   await assert.rejects(runApi, e => e.code === 'mapping_required');
   reset(); overrides['general/state-districts/BGD'] = () => Response.json([{districtId: 18, districtName: 'Other'}]);
   await assert.rejects(runApi, e => e.code === 'mapping_required');

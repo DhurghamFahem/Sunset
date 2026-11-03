@@ -16,11 +16,12 @@ system audit event. Tokens live only for one attempt.
 
 ## Configure and deploy
 
-1. Apply all migrations, including `202611030001_prime_uploads.sql`.
-2. Deploy both functions:
+1. Apply all migrations, including `202611030001_prime_uploads.sql` and `202611030002_prime_order_options.sql`.
+2. Deploy all three functions:
    ```sh
    npx supabase functions deploy save-employee
    npx supabase functions deploy prime-upload
+   npx supabase functions deploy prime-locations
    ```
 3. Generate a random server-only `PRIME_WORKER_SECRET` (at least 32 random bytes)
    and set it in Supabase Edge Function secrets. Never put it in Flutter config.
@@ -30,8 +31,7 @@ system audit event. Tokens live only for one attempt.
    invocation using pg_cron and pg_net. Each invocation processes one order.
    Scheduling follows [Supabase's Edge Function scheduling documentation](https://supabase.com/docs/guides/functions/schedule-functions).
 6. In the employee editor, enter that employee's **Prime username/password**.
-   Passwords are encrypted in Vault; only username/configured status and optional
-   mapping IDs appear in employee records. Leaving a saved password blank retains
+   Passwords are encrypted in Vault; only username/configured status appear in the employee editor. Leaving a saved password blank retains
    it; changing the username requires a new password. Clearing the username
    disconnects the Prime account.
 
@@ -42,20 +42,30 @@ account. Missing credentials consume retries and leave the order confirmed.
 
 ## Address, shop and product mapping
 
-- Governorate must match a Prime state name or key, e.g. `بغداد` or `BGD`.
-- Area must match a district name or numeric district ID within that state.
-  The landmark remains free text and is included in `locationDetails`.
-- A single active shop is automatic. If there are multiple, set the optional
-  **Prime shop number** in the employee editor.
-- A single active Prime product is automatic. With multiple products, exact
-  names are matched. Alternatively, set the employee's **Prime tattoo product
-  number** to represent every tattoo with the selected Prime product.
-- Dimensions come from Prime's product catalog. Missing/invalid dimensions or
-  ambiguous mappings stop the attempt; the worker never guesses an ID. Multiple
-  local tattoos mapped to one Prime product are aggregated by quantity and
-  weighted unit price. Parcel dimensions use Pigeon's volume-based calculation.
-- Collection amount is the saved final total, or item subtotal plus delivery.
-  The short order code and full UUID are included in the address for tracing.
+- State and district selectors load their options from Prime through the
+  authenticated `prime-locations` Edge Function. They save both Prime IDs and
+  human-readable labels. Changing state clears the district; failed requests
+  offer retry. Browser clients never receive Prime credentials or tokens.
+- Existing text-only addresses are matched to Prime names/IDs for compatibility.
+  Newly saved selections use explicit IDs, and the worker verifies that the
+  district belongs to the selected state before creating the shipment.
+- The first store returned by Prime is selected, followed by the first product
+  returned for that store. All tattoos use that product. Legacy employee mapping
+  columns are retained for compatibility but no longer affect selection.
+- Dimensions come from that Prime product. Missing dimensions or empty lists stop
+  the attempt. Quantities are aggregated; parcel dimensions use Pigeon's
+  volume-based calculation.
+- The customer name sent to Prime is exactly the order code. The short order
+  code and full UUID remain in the address for tracing; delivery notes are kept.
+- The original merchandise price excludes delivery. Order total includes delivery
+  and honors saved discounts. Prime's per-item selling price is the merchandise
+  portion (total minus delivery, floored at zero), divided by quantity and rounded
+  to whole dinars as required by the existing Prime contract.
+- **Paid** means goods AND delivery have already been paid. `is_paid` is saved on
+  the order; Prime receives `receiptAmtIqd: "0"` for paid orders and the total
+  including delivery for unpaid orders. The merchandise value and local total
+  are preserved. Payment status can be changed only before upload; customers
+  cannot set it. The form shows the amount the driver should collect.
 
 Changes made after a successful upload are not synchronized to Prime by this
 integration. Make corresponding corrections in Prime before packing/shipping.
@@ -97,8 +107,9 @@ the account/address/mapping first and then deliberately requeue it in the same w
 
 ```sh
 node tool/prime_upload_test.cjs
+node tool/prime_locations_test.cjs
 node tool/employee_function_test.cjs
-flutter test test/employee_account_test.dart test/order_ui_test.dart test/order_repository_test.dart
+flutter test test/prime_address_fields_test.dart test/employee_account_test.dart test/order_ui_test.dart test/order_repository_test.dart
 flutter analyze
 ```
 

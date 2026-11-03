@@ -319,12 +319,6 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
     text: widget.employee?.primeUsername,
   );
   final primePassword = TextEditingController();
-  late final primeShop = TextEditingController(
-    text: widget.employee?.primeShopId?.toString(),
-  );
-  late final primeProduct = TextEditingController(
-    text: widget.employee?.primeProductId?.toString(),
-  );
   late final employeeId = widget.employee?.id ?? newOrderToken();
   bool get needsLogin => widget.employee?.userId == null;
   final form = GlobalKey<FormState>();
@@ -338,8 +332,6 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
     password.dispose();
     primeUsername.dispose();
     primePassword.dispose();
-    primeShop.dispose();
-    primeProduct.dispose();
     super.dispose();
   }
 
@@ -355,8 +347,6 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
         password: needsLogin ? password.text : null,
         primeUsername: primeUsername.text,
         primePassword: primePassword.text.isEmpty ? null : primePassword.text,
-        primeShopId: int.tryParse(primeShop.text),
-        primeProductId: int.tryParse(primeProduct.text),
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -460,24 +450,7 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
                   ? 'أدخل كلمة مرور برايم'
                   : null,
             ),
-            for (final entry in [
-              (primeShop, 'رقم المتجر في برايم (اختياري)'),
-              (primeProduct, 'رقم منتج الوشوم في برايم (اختياري)'),
-            ])
-              TextFormField(
-                controller: entry.$1,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: entry.$2),
-                validator: (v) =>
-                    v!.trim().isEmpty ||
-                        ((int.tryParse(v) ?? 0) > 0 &&
-                            (int.tryParse(v) ?? 0) <= 2147483647)
-                    ? null
-                    : 'أدخل رقماً صحيحاً أكبر من صفر',
-              ),
-            const Text(
-              'يُختار المتجر والمنتج تلقائياً عند توفر خيار واحد في برايم.',
-            ),
+            const Text('يُختار أول متجر وأول منتج من برايم تلقائياً.'),
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text('صلاحيات الموظف: الطلبات وصور الزبون فقط.'),

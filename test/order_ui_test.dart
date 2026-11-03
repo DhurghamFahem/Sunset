@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sunset/app_scope.dart';
 import 'package:sunset/models/order.dart';
+import 'package:sunset/models/prime_location.dart';
 import 'package:sunset/repositories/order_repository.dart';
 import 'package:sunset/services/analytics.dart';
 import 'package:sunset/state/selection_store.dart';
@@ -209,6 +210,18 @@ void main() {
     expect(find.text('رمز الوشم: ${fixture(1).code}'), findsOneWidget);
     await capture(tester, 'order-employee');
     Future<void> fill(String label, String text) async {
+      if (label == 'المحافظة *' || label == 'المنطقة *') {
+        final picker = find.widgetWithText(
+          DropdownButtonFormField<PrimeLocation>,
+          label,
+        );
+        await tester.ensureVisible(picker);
+        await tester.tap(picker);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(text).last);
+        await tester.pumpAndSettle();
+        return;
+      }
       final field = find.widgetWithText(TextFormField, label);
       await tester.scrollUntilVisible(
         field,
@@ -223,6 +236,13 @@ void main() {
     await fill('المنطقة *', 'المنصور');
     await fill('أقرب نقطة دالة', 'قرب جامع الرحمن');
     await fill('ملاحظات للمندوب (اختياري)', 'الاتصال قبل الوصول');
+    final paidSwitch = find.widgetWithText(
+      SwitchListTile,
+      'مدفوع بالكامل (مع التوصيل)',
+    );
+    await tester.ensureVisible(paidSwitch);
+    await tester.tap(paidSwitch);
+    await tester.pumpAndSettle();
     final source = find.byType(DropdownButtonFormField<OrderSource>);
     expect(
       tester.widget<DropdownButtonFormField<OrderSource>>(source).initialValue,
@@ -252,6 +272,11 @@ void main() {
     expect(copied, contains('ملاحظات للمندوب: الاتصال قبل الوصول'));
     expect(find.widgetWithText(FilledButton, 'مرفوع للتوصيل'), findsNothing);
     final confirmed = await app.orders.get(order.id);
+    expect(confirmed.isPaid, isTrue);
+    expect(confirmed.collectAmount, 0);
+    expect(confirmed.primeStateId, 'BGD');
+    expect(confirmed.primeDistrictId, 17);
+    expect(confirmed.customerName, confirmed.code);
     expect(confirmed.status, OrderStatus.confirmed);
     expect(confirmed.landmark, 'قرب جامع الرحمن');
     expect(confirmed.deliveryNotes, 'الاتصال قبل الوصول');
@@ -321,6 +346,11 @@ void main() {
       expect(find.byType(TextFormField), findsNothing);
       expect(find.text('تأكيد الطلب ونسخ الرسالة'), findsNothing);
       expect(find.text('معلومات العميل والتوصيل'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('إلغاء الطلب'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('إلغاء الطلب'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -353,6 +383,18 @@ void main() {
       await tester.pumpWidget(wrap(app, OrderScreen(order: order)));
       await tester.pumpAndSettle();
       Future<void> fill(String label, String text) async {
+        if (label == 'المحافظة *' || label == 'المنطقة *') {
+          final picker = find.widgetWithText(
+            DropdownButtonFormField<PrimeLocation>,
+            label,
+          );
+          await tester.ensureVisible(picker);
+          await tester.tap(picker);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text(text).last);
+          await tester.pumpAndSettle();
+          return;
+        }
         final field = find.widgetWithText(TextFormField, label);
         await tester.scrollUntilVisible(
           field,

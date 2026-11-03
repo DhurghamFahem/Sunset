@@ -1,8 +1,8 @@
-import { PrimeFailure, type Order, type PreparedShipment, type AccountMapping } from "./prime.ts";
+import { PrimeFailure, type Order, type PreparedShipment } from "./prime.ts";
 
 type Rpc = (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-type Api = { login(username: string, password: string): Promise<string>; prepare(order: Order, token: string, mapping: AccountMapping): Promise<PreparedShipment>; upload(shipment: PreparedShipment, token: string): Promise<string> };
-type Job = AccountMapping & { order: Order; claim_token: string; username: string | null; password: string | null };
+type Api = { login(username: string, password: string): Promise<string>; prepare(order: Order, token: string): Promise<PreparedShipment>; upload(shipment: PreparedShipment, token: string): Promise<string> };
+type Job = { order: Order; claim_token: string; username: string | null; password: string | null };
 
 export async function processOne(rpc: Rpc, api: Api): Promise<string> {
   const claimed = await rpc("claim_prime_upload");
@@ -20,7 +20,7 @@ export async function processOne(rpc: Rpc, api: Api): Promise<string> {
     }
     // Reauthenticate on every attempt, so an expired/rejected token is never reused.
     const token = await api.login(job.username, job.password);
-    const shipment = await api.prepare(job.order, token, job);
+    const shipment = await api.prepare(job.order, token);
     const marked = await rpc("mark_prime_sending", args);
     if (marked.error) throw new Error("Queue unavailable");
     if (marked.data !== true) return "stale";

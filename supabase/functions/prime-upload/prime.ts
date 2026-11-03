@@ -2,7 +2,6 @@
 // PascalCase login, camelCase logistics, three logistics calls, numeric case ID.
 export type Order = Record<string, unknown> & { id: string };
 type Row = Record<string, unknown>;
-export type AccountMapping = { shop_id?: number | null; product_id?: number | null };
 export type PreparedShipment = Record<string, unknown>;
 export class PrimeFailure extends Error {
   constructor(
@@ -60,27 +59,38 @@ export class PrimeClient {
     throw new PrimeFailure("login_failed", "retry");
   }
 
-  async prepare(order: Order, token: string, mapping: AccountMapping = {}): Promise<PreparedShipment> {
-    const shops = rows(await this.call('merchant/list-of-shops', token)).filter(s => s.active !== false);
-    const shop = unique(mapping.shop_id ? shops.filter(s => Number(s.id) === mapping.shop_id) : shops);
+  async locations(token: string, stateKey?: string): Promise<{ id: string; name: string }[]> {
+    if (stateKey !== undefined && !/^[a-zA-Z0-9_-]{1,30}$/.test(stateKey)) throw new PrimeFailure('mapping_required', 'failed');
+    const result = rows(await this.call(stateKey === undefined ? 'general/states' : `general/state-districts/${stateKey}`, token));
+    return result.map(row => ({
+      id: String(stateKey === undefined ? row.key ?? '' : row.districtId ?? ''),
+      name: String(stateKey === undefined ? row.val ?? '' : row.districtName ?? ''),
+    })).filter(row => row.id.length > 0 && row.name.length > 0);
+  }
+
+  async prepare(order: Order, token: string): Promise<PreparedShipment> {
+    const shops = rows(await this.call('merchant/list-of-shops', token));
+    const shop = unique(shops.slice(0, 1));
     const senderId = positive(shop.id);
     const states = rows(await this.call('general/states', token));
-    const state = unique(states.filter(s => [s.key, s.val].some(v => normalize(v) === normalize(order.governorate))));
+    const state = unique(states.filter(s => order.prime_state_id
+      ? String(s.key) === String(order.prime_state_id)
+      : [s.key, s.val].some(v => normalize(v) === normalize(order.governorate))));
     const stateKey = String(state.key);
     if (!/^[a-zA-Z0-9_-]+$/.test(stateKey)) throw new PrimeFailure('mapping_required', 'retry');
     const districts = rows(await this.call(`general/state-districts/${stateKey}`, token));
-    const district = unique(districts.filter(d => [d.districtId, d.districtName].some(v => normalize(v) === normalize(order.area))));
+    const district = unique(districts.filter(d => order.prime_district_id
+      ? Number(d.districtId) === Number(order.prime_district_id)
+      : [d.districtId, d.districtName].some(v => normalize(v) === normalize(order.area))));
     const districtId = String(positive(district.districtId));
-    const products = rows(await this.call(`merchant/shop-products/${senderId}`, token)).filter(p => p.active !== false);
+    const products = rows(await this.call(`merchant/shop-products/${senderId}`, token));
+    const product = unique(products.slice(0, 1));
     const lines = rows(order.items);
     if (!lines.length) throw new PrimeFailure('mapping_required', 'retry');
     const grouped = new Map<number, { qty: number; value: number; heightCm: number; lengthCm: number; widthCm: number }>();
     let subtotal = 0;
     for (const line of lines) {
-      // A selected generic tattoo product can represent all tattoos. Otherwise
-      // use an exact name match, or the only active Prime product.
-      const product = unique(mapping.product_id ? products.filter(p => Number(p.id) === mapping.product_id)
-        : products.length === 1 ? products : products.filter(p => normalize(p.name) === normalize(line.name)));
+      // All tattoos use the first product returned for the first Prime store.
       const id = positive(product.id), qty = positive(line.quantity), price = Number(line.unit_price);
       if (!Number.isSafeInteger(price) || price < 0) throw new PrimeFailure('mapping_required', 'retry');
       const value = qty * price;
@@ -100,16 +110,21 @@ export class PrimeClient {
     const dimensions = { heightCm: Math.round(dominant.heightCm * scale), lengthCm: Math.round(dominant.lengthCm * scale), widthCm: Math.round(dominant.widthCm * scale) };
     const total = Number(order.final_total ?? subtotal + Number(order.delivery_cost));
     if (!Number.isSafeInteger(total) || total < 0) throw new PrimeFailure('mapping_required', 'retry');
-    const common = { state: stateKey, district: districtId, senderId, receiptAmtIqd: String(total) };
+    // Product value excludes delivery, including any final order discount.
+    const goodsTotal = Math.max(0, total - Number(order.delivery_cost));
+    const pieces = productsList.reduce((sum, product) => sum + product.qty, 0);
+    for (const product of productsList) product.itemSellPrice = String(Math.round(goodsTotal / pieces));
+    // Prime's receipt amount is what the driver collects, not the order value.
+    const common = { state: stateKey, district: districtId, senderId, receiptAmtIqd: String(order.is_paid === true ? 0 : total) };
     await this.call('logistics/check-shipment-cost-within-range', token, { ...common, productsList });
     await this.call('logistics/calculate-shipment-charges', token, {
       ...common, heightCm: String(dimensions.heightCm), lengthCm: String(dimensions.lengthCm), widthCm: String(dimensions.widthCm),
     });
-    const recipient = String(order.customer_name || order.username || order.phone || '').trim();
+    const recipient = String(order.code ?? '').trim();
     if (!recipient || !order.phone) throw new PrimeFailure('mapping_required', 'retry');
     return {
       ...common, ...dimensions, productsList, receiptAmtUsd: '0',
-      receiverName: `${order.code} - ${recipient}`, receiverHp1: order.phone,
+      receiverName: recipient, receiverHp1: order.phone,
       // Full UUID supports reconciliation; short order codes are reused.
       locationDetails: `${order.code} [${order.id}] - ${order.governorate} - ${order.area}${order.landmark ? ` - ${order.landmark}` : ''}`,
       rmk: String(order.delivery_notes ?? ''),

@@ -10,6 +10,7 @@ import '../models/catalog.dart';
 import '../models/order.dart';
 import 'admin/manual_order_screen.dart';
 import 'widgets/common.dart';
+import 'widgets/prime_address_fields.dart';
 
 class OrderScreen extends StatefulWidget {
   const OrderScreen({super.key, required this.order, this.token});
@@ -29,7 +30,9 @@ class _OrderScreenState extends State<OrderScreen> {
   late final area = TextEditingController(text: order.area);
   late final landmark = TextEditingController(text: order.landmark);
   late final deliveryNotes = TextEditingController(text: order.deliveryNotes);
-  late final name = TextEditingController(text: order.customerName);
+  late String? primeStateId = order.primeStateId;
+  late int? primeDistrictId = order.primeDistrictId;
+  late bool isPaid = order.isPaid;
   late final username = TextEditingController(text: order.username);
   late final delivery = TextEditingController(text: '${order.deliveryCost}');
   late final finalPrice = TextEditingController(
@@ -102,7 +105,6 @@ class _OrderScreenState extends State<OrderScreen> {
       area,
       landmark,
       deliveryNotes,
-      name,
       username,
       delivery,
       finalPrice,
@@ -132,6 +134,7 @@ class _OrderScreenState extends State<OrderScreen> {
     'items': draftItems().map((i) => i.toJson()).toList(),
     'delivery_cost': int.tryParse(delivery.text) ?? 0,
     'final_total': int.tryParse(finalPrice.text),
+    'is_paid': isPaid,
   });
 
   Future<void> addItems() async {
@@ -224,9 +227,12 @@ class _OrderScreenState extends State<OrderScreen> {
             'phone': phone.text.trim(),
             'governorate': governorate.text.trim(),
             'area': area.text.trim(),
+            'prime_state_id': primeStateId,
+            'prime_district_id': primeDistrictId,
+            'is_paid': isPaid,
             'landmark': landmark.text.trim(),
             'delivery_notes': deliveryNotes.text.trim(),
-            'customer_name': name.text.trim(),
+            'customer_name': order.code,
             'username': username.text.trim(),
             'source': source.name,
           });
@@ -247,6 +253,7 @@ class _OrderScreenState extends State<OrderScreen> {
       if (!mounted) return;
       setState(() {
         order = saved;
+        isPaid = saved.isPaid;
         items = List.of(saved.items);
         // Cancellation discards any unsaved additions/removals too.
         for (final controllers in [quantities, originals, prices, accepted]) {
@@ -449,8 +456,24 @@ class _OrderScreenState extends State<OrderScreen> {
                   ),
                   const SizedBox(height: 16),
                   field('رقم الهاتف *', phone, maxLength: 26),
-                  field('المحافظة *', governorate),
-                  field('المنطقة *', area, maxLength: 300),
+                  if (order.status.editable)
+                    PrimeAddressFields(
+                      order: order,
+                      enabled: editable && !busy,
+                      onChanged: (state, district) => setState(() {
+                        governorate.text = state?.name ?? '';
+                        area.text = district?.name ?? '';
+                        // Partial selections are never saved as a mismatched pair.
+                        primeStateId = district == null ? null : state?.id;
+                        primeDistrictId = district == null
+                            ? null
+                            : int.tryParse(district.id);
+                      }),
+                    )
+                  else ...[
+                    field('المحافظة *', governorate),
+                    field('المنطقة *', area, maxLength: 300),
+                  ],
                   field('أقرب نقطة دالة', landmark, maxLength: 300),
                   field(
                     'ملاحظات للمندوب (اختياري)',
@@ -458,7 +481,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     maxLength: 1000,
                     maxLines: 3,
                   ),
-                  field('اسم العميل (اختياري)', name),
+                  Text('اسم العميل في برايم: ${order.code}'),
                   field('اسم المستخدم (اختياري)', username),
                   DropdownButtonFormField<OrderSource>(
                     initialValue: source,
@@ -475,6 +498,21 @@ class _OrderScreenState extends State<OrderScreen> {
                   ),
                   const SizedBox(height: 12),
                   const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('مدفوع بالكامل (مع التوصيل)'),
+                    subtitle: const Text(
+                      'عند التفعيل لن يستحصل مندوب برايم أي مبلغ',
+                    ),
+                    value: isPaid,
+                    onChanged:
+                        !busy &&
+                            [
+                              OrderStatus.pending,
+                              OrderStatus.confirmed,
+                            ].contains(order.status)
+                        ? (value) => setState(() => isPaid = value)
+                        : null,
+                  ),
                   field(
                     'كلفة التوصيل',
                     delivery,
@@ -502,7 +540,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             'توجد قطع بدون سعر. ستحدد الإدارة أسعارها قبل التأكيد.',
                           ),
                         Text(
-                          'قيمة القطع الأصلية: ${AppConfig.money(totals.originalSubtotal)}',
+                          'السعر الأصلي بدون التوصيل: ${AppConfig.money(totals.originalSubtotal)}',
                         ),
                         Text(
                           'التوصيل: ${AppConfig.money(totals.deliveryCost)}',
@@ -520,11 +558,14 @@ class _OrderScreenState extends State<OrderScreen> {
                           'إجمالي الخصم: ${AppConfig.money(totals.discount)}',
                         ),
                         Text(
-                          'المبلغ النهائي: ${AppConfig.money(totals.total)}',
+                          'إجمالي الطلب مع التوصيل: ${AppConfig.money(totals.total)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
+                        ),
+                        Text(
+                          'المبلغ المطلوب عند التوصيل: ${AppConfig.money(totals.collectAmount)}',
                         ),
                         if (order.status == OrderStatus.partial)
                           Text(

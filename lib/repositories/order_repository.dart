@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/catalog.dart';
 import '../models/order.dart';
+import '../models/prime_location.dart';
 import '../services/test_admin_service.dart';
 import 'catalog_repository.dart';
 
@@ -32,6 +33,7 @@ abstract class OrderRepository {
     int offset = 0,
   });
   Future<List<Employee>> employees();
+  Future<List<PrimeLocation>> primeLocations(String orderId, {String? stateId});
   Future<void> saveEmployee({
     String? id,
     required String name,
@@ -51,6 +53,28 @@ abstract class OrderRepository {
 class SupabaseOrderRepository implements OrderRepository {
   SupabaseOrderRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<List<PrimeLocation>> primeLocations(
+    String orderId, {
+    String? stateId,
+  }) async {
+    try {
+      final response = await client.functions.invoke(
+        'prime-locations',
+        body: {'orderId': orderId, 'stateId': ?stateId},
+      );
+      return (response.data['locations'] as List)
+          .map((row) => PrimeLocation.fromJson(Map<String, dynamic>.from(row)))
+          .toList();
+    } on FunctionException catch (e) {
+      throw OrderException(
+        e.details is Map && e.details['error'] is String
+            ? e.details['error'] as String
+            : 'تعذر تحميل العناوين من برايم',
+      );
+    }
+  }
+
   Future<TattooOrder> _rpc(String name, Json params) async {
     try {
       return TattooOrder.fromJson(
@@ -185,6 +209,22 @@ class MemoryOrderRepository implements OrderRepository {
   MemoryOrderRepository(this.catalog, {this.demoAdmin});
   final TestAdminService? demoAdmin;
   final CatalogRepository catalog;
+  @override
+  Future<List<PrimeLocation>> primeLocations(
+    String orderId, {
+    String? stateId,
+  }) async => switch (stateId) {
+    null => const [
+      PrimeLocation('BGD', 'بغداد'),
+      PrimeLocation('BSR', 'البصرة'),
+    ],
+    'BGD' => const [
+      PrimeLocation('17', 'المنصور'),
+      PrimeLocation('18', 'الكرادة'),
+    ],
+    'BSR' => const [PrimeLocation('25', 'العشار')],
+    _ => const [],
+  };
   final Map<String, TattooOrder> _orders = {};
   final Map<String, String> _tokens = {};
   final Map<String, Employee> _employees = {};
@@ -330,6 +370,9 @@ class MemoryOrderRepository implements OrderRepository {
         'customer_name',
         'username',
         'source',
+        'is_paid',
+        'prime_state_id',
+        'prime_district_id',
       ].contains(k),
     )) {
       throw const OrderException('حقول غير مسموحة');
@@ -342,11 +385,33 @@ class MemoryOrderRepository implements OrderRepository {
         )) {
       throw const OrderException('إكمال بيانات الطلب متاح للموظفين فقط');
     }
+    if (changes.containsKey('is_paid') && changes['is_paid'] is! bool) {
+      throw const OrderException('حالة الدفع غير صحيحة');
+    }
+    final addressReset =
+        !changes.containsKey('prime_state_id') &&
+        !changes.containsKey('prime_district_id') &&
+        ((changes.containsKey('governorate') &&
+                changes['governorate'] != old.governorate) ||
+            (changes.containsKey('area') && changes['area'] != old.area));
     final next = TattooOrder.fromJson({
       ...old.toJson(),
       ...changes,
+      if (addressReset) ...{'prime_state_id': null, 'prime_district_id': null},
       'version': old.version + 1,
     });
+    if (next.isPaid != old.isPaid &&
+        ![OrderStatus.pending, OrderStatus.confirmed].contains(old.status)) {
+      throw const OrderException(
+        'لا يمكن تغيير حالة الدفع بعد الرفع إلى برايم',
+      );
+    }
+    if ((next.primeStateId == null) != (next.primeDistrictId == null) ||
+        (next.primeStateId != null &&
+            !RegExp(r'^[a-zA-Z0-9_-]{1,30}$').hasMatch(next.primeStateId!)) ||
+        (next.primeDistrictId != null && next.primeDistrictId! <= 0)) {
+      throw const OrderException('اختر المحافظة والمنطقة من برايم');
+    }
     if (next.landmark.length > 300 || next.deliveryNotes.length > 1000) {
       throw const OrderException('النقطة الدالة أو ملاحظات المندوب طويلة جداً');
     }
