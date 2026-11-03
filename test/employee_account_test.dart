@@ -55,6 +55,8 @@ void main() {
     await fill('رقم الهاتف', '07701234567');
     await fill('البريد الإلكتروني للدخول', 'worker@example.com');
     await fill('كلمة المرور', 'Employee123!');
+    await fill('اسم المستخدم في برايم', 'prime-worker');
+    await fill('كلمة مرور برايم', 'prime-password');
     expect(
       tester
           .widget<TextField>(
@@ -70,6 +72,8 @@ void main() {
     await tester.pumpAndSettle();
     final employee = (await app.orders.employees()).single;
     expect(employee.email, 'worker@example.com');
+    expect(employee.primeUsername, 'prime-worker');
+    expect(employee.primeConfigured, isTrue);
     await admin.signOut();
     await expectLater(
       admin.signIn(employee.email, 'wrong'),

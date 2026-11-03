@@ -315,6 +315,16 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
   late final phone = TextEditingController(text: widget.employee?.phone);
   late final email = TextEditingController(text: widget.employee?.email);
   final password = TextEditingController();
+  late final primeUsername = TextEditingController(
+    text: widget.employee?.primeUsername,
+  );
+  final primePassword = TextEditingController();
+  late final primeShop = TextEditingController(
+    text: widget.employee?.primeShopId?.toString(),
+  );
+  late final primeProduct = TextEditingController(
+    text: widget.employee?.primeProductId?.toString(),
+  );
   late final employeeId = widget.employee?.id ?? newOrderToken();
   bool get needsLogin => widget.employee?.userId == null;
   final form = GlobalKey<FormState>();
@@ -326,6 +336,10 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
     phone.dispose();
     email.dispose();
     password.dispose();
+    primeUsername.dispose();
+    primePassword.dispose();
+    primeShop.dispose();
+    primeProduct.dispose();
     super.dispose();
   }
 
@@ -339,6 +353,10 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
         phone: phone.text,
         email: email.text,
         password: needsLogin ? password.text : null,
+        primeUsername: primeUsername.text,
+        primePassword: primePassword.text.isEmpty ? null : primePassword.text,
+        primeShopId: int.tryParse(primeShop.text),
+        primeProductId: int.tryParse(primeProduct.text),
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -406,6 +424,60 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
                     ? null
                     : 'أدخل كلمة مرور من 8 أحرف على الأقل',
               ),
+            const SizedBox(height: 16),
+            const Text('حساب برايم للتوصيل'),
+            TextFormField(
+              controller: primeUsername,
+              maxLength: 254,
+              autocorrect: false,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(
+                labelText: 'اسم المستخدم في برايم',
+              ),
+              validator: (v) =>
+                  primePassword.text.isNotEmpty && (v?.trim().isEmpty ?? true)
+                  ? 'أدخل اسم المستخدم في برايم'
+                  : null,
+            ),
+            TextFormField(
+              controller: primePassword,
+              maxLength: 256,
+              obscureText: true,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: InputDecoration(
+                labelText: 'كلمة مرور برايم',
+                helperText: widget.employee?.primeConfigured == true
+                    ? 'اتركها فارغة للاحتفاظ بكلمة المرور الحالية'
+                    : 'مطلوبة لرفع الطلبات إلى برايم',
+              ),
+              validator: (v) =>
+                  primeUsername.text.trim().isNotEmpty &&
+                      (widget.employee?.primeConfigured != true ||
+                          primeUsername.text.trim() !=
+                              widget.employee?.primeUsername) &&
+                      (v?.isEmpty ?? true)
+                  ? 'أدخل كلمة مرور برايم'
+                  : null,
+            ),
+            for (final entry in [
+              (primeShop, 'رقم المتجر في برايم (اختياري)'),
+              (primeProduct, 'رقم منتج الوشوم في برايم (اختياري)'),
+            ])
+              TextFormField(
+                controller: entry.$1,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: entry.$2),
+                validator: (v) =>
+                    v!.trim().isEmpty ||
+                        ((int.tryParse(v) ?? 0) > 0 &&
+                            (int.tryParse(v) ?? 0) <= 2147483647)
+                    ? null
+                    : 'أدخل رقماً صحيحاً أكبر من صفر',
+              ),
+            const Text(
+              'يُختار المتجر والمنتج تلقائياً عند توفر خيار واحد في برايم.',
+            ),
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text('صلاحيات الموظف: الطلبات وصور الزبون فقط.'),

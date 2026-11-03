@@ -45,15 +45,26 @@ class Employee {
     required this.phone,
     this.email = '',
     this.userId,
+    this.primeUsername = '',
+    this.primeConfigured = false,
+    this.primeShopId,
+    this.primeProductId,
   });
   final String id, name, phone, email;
   final String? userId;
+  final String primeUsername;
+  final bool primeConfigured;
+  final int? primeShopId, primeProductId;
   factory Employee.fromJson(Json j) => Employee(
     id: j['id'],
     name: j['name'],
     phone: j['phone'],
     email: j['email'] ?? '',
     userId: j['user_id'],
+    primeUsername: j['prime_username'] ?? '',
+    primeConfigured: j['prime_configured'] ?? false,
+    primeShopId: j['prime_shop_id'],
+    primeProductId: j['prime_product_id'],
   );
 }
 

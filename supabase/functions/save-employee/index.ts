@@ -28,7 +28,15 @@ Deno.serve(async (req) => {
 
     let body;
     try { body = await req.json(); } catch { return reply(400, { error: "بيانات غير صحيحة" }); }
-    const { id, name, phone, email, password } = body ?? {};
+    const { id, name, phone, email, password, primeUsername, primePassword, primeShopId, primeProductId } = body ?? {};
+    if ([primeShopId, primeProductId].some(v => v != null && (!Number.isInteger(v) || v <= 0 || v > 2147483647))) {
+      return reply(400, { error: "رقم متجر أو منتج برايم غير صحيح" });
+    }
+    if ((primeUsername !== undefined && (typeof primeUsername !== "string" || primeUsername.length > 254)) ||
+      (primePassword !== undefined && (typeof primePassword !== "string" || primePassword.length < 1 || primePassword.length > 256)) ||
+      (primePassword !== undefined && !primeUsername?.trim())) {
+      return reply(400, { error: "راجع اسم المستخدم وكلمة مرور برايم" });
+    }
     if (typeof id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
       typeof name !== "string" || name.trim().length < 1 || name.trim().length > 120 ||
       typeof phone !== "string" || !/^\+?[0-9][0-9 ()-]{6,24}$/.test(phone.trim()) ||
@@ -37,15 +45,27 @@ Deno.serve(async (req) => {
     }
     const normalizedEmail = email.trim().toLowerCase();
     const { data: existing, error: lookupError } = await caller.from("employees")
-      .select("user_id,email").eq("id", id).maybeSingle();
+      .select("user_id,email,prime_username,prime_configured").eq("id", id).maybeSingle();
     if (lookupError) return reply(500, { error: "تعذر تحميل الموظف. تأكد من تحديث قاعدة البيانات" });
+    if (primeUsername?.trim() && (!existing?.prime_configured || existing.prime_username !== primeUsername.trim()) && !primePassword) {
+      return reply(400, { error: "أدخل كلمة مرور برايم لهذا الحساب" });
+    }
+    const savePrime = async () => {
+      if (primeUsername === undefined) return null;
+      const { error } = await caller.rpc("save_employee_prime_account", {
+        p_id: id, p_username: primeUsername.trim(), p_password: primePassword ?? null,
+        p_shop_id: primeShopId ?? null, p_product_id: primeProductId ?? null,
+      });
+      return error ? reply(500, { error: "تم حفظ الموظف لكن تعذر حفظ حساب برايم. أعد المحاولة" }) : null;
+    };
     if (existing?.user_id) {
       if (existing.email !== normalizedEmail) return reply(409, { error: "لا يمكن تغيير بريد حساب الدخول من هذه الشاشة" });
       // Also makes a retry after a lost successful create response safe.
       const { error } = await caller.rpc("update_employee_profile", {
         p_id: id, p_name: name.trim(), p_phone: phone.trim(),
       });
-      return error ? reply(500, { error: "تعذر حفظ الموظف. حاول مرة ثانية" }) : reply(200, { id });
+      if (error) return reply(500, { error: "تعذر حفظ الموظف. حاول مرة ثانية" });
+      return await savePrime() ?? reply(200, { id });
     }
     if (typeof password !== "string" || password.length < 8 || password.length > 128) {
       return reply(400, { error: "أدخل كلمة مرور من 8 إلى 128 حرفاً" });
@@ -66,7 +86,7 @@ Deno.serve(async (req) => {
       if (error.code === "weak_password") return reply(400, { error: "اختر كلمة مرور أقوى وفق إعدادات الحساب" });
       return reply(500, { error: "تعذر إنشاء حساب الموظف. تحقق من البيانات ثم حاول مرة ثانية" });
     }
-    return reply(200, { id });
+    return await savePrime() ?? reply(200, { id });
   } catch {
     return reply(500, { error: "تعذر حفظ الموظف. حاول مرة ثانية" });
   }

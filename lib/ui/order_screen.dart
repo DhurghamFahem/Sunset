@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -51,8 +54,48 @@ class _OrderScreenState extends State<OrderScreen> {
   String? error;
   bool get staff => widget.token == null;
   bool get editable => staff && order.status.editable;
+  Timer? uploadPoll;
+  bool refreshingUpload = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    uploadPoll ??= Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => refreshUpload(),
+    );
+  }
+
+  Future<void> refreshUpload() async {
+    if (busy || refreshingUpload || order.status != OrderStatus.confirmed) {
+      return;
+    }
+    refreshingUpload = true;
+    final version = order.version;
+    try {
+      final refreshed = await AppScope.of(context).orders
+          .get(order.id, token: widget.token);
+      if (!mounted || busy || order.version != version) return;
+      // Only adopt a status-only change; preserve unsaved edits and optimistic
+      // locking when another employee changed the order's content.
+      String content(TattooOrder value) => jsonEncode(
+        value.toJson()
+          ..remove('status')
+          ..remove('version'),
+      );
+      if (refreshed.status != order.status &&
+          content(refreshed) == content(order)) {
+        setState(() => order = refreshed);
+      }
+    } catch (_) {
+      // The durable server queue continues while this screen is offline.
+    } finally {
+      refreshingUpload = false;
+    }
+  }
+
   @override
   void dispose() {
+    uploadPoll?.cancel();
     for (final c in [
       phone,
       governorate,
@@ -502,12 +545,20 @@ class _OrderScreenState extends State<OrderScreen> {
                     ),
                   ),
                 if (busy) const LinearProgressIndicator(),
+                if (staff && order.status == OrderStatus.confirmed)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'يُرفع الطلب إلى برايم في الخلفية. يبقى مؤكداً إذا تعذر الرفع.',
+                    ),
+                  ),
                 if (staff && order.status.editable)
                   OutlinedButton(
                     onPressed: busy ? null : () => save(order.status),
                     child: const Text('حفظ التعديلات'),
                   ),
                 ...order.status.next
+                    .where((s) => s != OrderStatus.uploaded)
                     .where(
                       (s) =>
                           staff ||

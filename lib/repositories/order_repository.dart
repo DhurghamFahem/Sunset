@@ -38,6 +38,10 @@ abstract class OrderRepository {
     required String phone,
     required String email,
     String? password,
+    String? primeUsername,
+    String? primePassword,
+    int? primeShopId,
+    int? primeProductId,
   });
   Future<int> deliveryCost();
   Future<void> setDeliveryCost(int cost);
@@ -128,6 +132,10 @@ class SupabaseOrderRepository implements OrderRepository {
     required String phone,
     required String email,
     String? password,
+    String? primeUsername,
+    String? primePassword,
+    int? primeShopId,
+    int? primeProductId,
   }) async {
     try {
       await client.functions.invoke(
@@ -138,6 +146,10 @@ class SupabaseOrderRepository implements OrderRepository {
           'phone': phone.trim(),
           'email': email.trim().toLowerCase(),
           'password': ?password,
+          'primeUsername': ?primeUsername,
+          'primePassword': ?primePassword,
+          'primeShopId': primeShopId,
+          'primeProductId': primeProductId,
         },
       );
     } on FunctionException catch (e) {
@@ -481,6 +493,10 @@ class MemoryOrderRepository implements OrderRepository {
     required String phone,
     required String email,
     String? password,
+    String? primeUsername,
+    String? primePassword,
+    int? primeShopId,
+    int? primeProductId,
   }) async {
     if (name.trim().isEmpty ||
         name.trim().length > 120 ||
@@ -508,12 +524,33 @@ class MemoryOrderRepository implements OrderRepository {
         normalizedEmail == 'test@gmail.com') {
       throw const OrderException('البريد الإلكتروني مستخدم بالفعل');
     }
+    final primeLogin = primeUsername?.trim() ?? existing?.primeUsername ?? '';
+    if (primeLogin.length > 254 ||
+        (primePassword != null &&
+            (primePassword.isEmpty ||
+                primePassword.length > 256 ||
+                primeLogin.isEmpty)) ||
+        (primeLogin.isNotEmpty &&
+            (existing?.primeConfigured != true ||
+                existing?.primeUsername != primeLogin) &&
+            primePassword == null)) {
+      throw const OrderException('راجع اسم المستخدم وكلمة مرور برايم');
+    }
     final employee = Employee(
       id: key,
       name: name.trim(),
       phone: phone.trim(),
       email: existing?.email ?? normalizedEmail,
       userId: existing?.userId ?? newOrderToken(),
+      primeUsername: primeLogin,
+      primeShopId: primeUsername == null ? existing?.primeShopId : primeShopId,
+      primeProductId: primeUsername == null
+          ? existing?.primeProductId
+          : primeProductId,
+      primeConfigured:
+          primeLogin.isNotEmpty &&
+          ((primePassword?.isNotEmpty ?? false) ||
+              (existing?.primeConfigured ?? false)),
     );
     demoAdmin?.registerEmployee(employee, existing == null ? password : null);
     _employees[key] = employee;

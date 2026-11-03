@@ -1,4 +1,16 @@
 begin;
+
+-- Simulate a verified carrier receipt for tests of later order stages.
+create function pg_temp.prime_accept(p_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare claim uuid := gen_random_uuid(); v integer;
+begin
+  select version into v from public.orders where id=p_id for update;
+  update private.prime_upload_jobs set state='sending', claim_token=claim, order_version=v where order_id=p_id;
+  perform public.finish_prime_upload(p_id,claim,'success','987654');
+  return public.get_selection_order(p_id);
+end $$;
+
 insert into auth.users(id, email) values ('00000000-0000-4000-8000-000000000088', 'tattoo-edit@example.invalid');
 insert into public.admin_users(user_id) values ('00000000-0000-4000-8000-000000000088');
 insert into public.categories(id, name_ar) values ('10000000-0000-4000-8000-000000000088', 'Edit tattoos');
@@ -19,7 +31,9 @@ begin
   first_item := o->'items'->0;
   second_item := '{"product_id":"20000000-0000-4000-8000-000000000089","name":"EDIT-B","code":"EDIT-B","quantity":2,"original_price":3000,"unit_price":2500,"accepted_quantity":0}';
   foreach stage in array array['pending','confirmed','uploaded','packed'] loop
-    if stage <> 'pending' then
+    if stage = 'uploaded' then
+      o := pg_temp.prime_accept((o->>'id')::uuid);
+    elsif stage <> 'pending' then
       o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer,
         jsonb_build_object('status', stage, 'phone', '07701234567', 'governorate', 'Baghdad', 'area', 'Mansour'));
     end if;

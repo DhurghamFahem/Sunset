@@ -418,3 +418,7 @@ enabled = true
 # The handler validates the user with Auth and checks is_admin before all writes.
 [functions.save-employee]
 verify_jwt = false
+
+# Server-only scheduler secret is validated by the handler.
+[functions.prime-upload]
+verify_jwt = false

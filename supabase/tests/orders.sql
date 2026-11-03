@@ -1,4 +1,16 @@
 begin;
+
+-- Simulate a verified carrier receipt for tests of later order stages.
+create function pg_temp.prime_accept(p_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare claim uuid := gen_random_uuid(); v integer;
+begin
+  select version into v from public.orders where id=p_id for update;
+  update private.prime_upload_jobs set state='sending', claim_token=claim, order_version=v where order_id=p_id;
+  perform public.finish_prime_upload(p_id,claim,'success','987654');
+  return public.get_selection_order(p_id);
+end $$;
+
 insert into auth.users(id, email) values ('00000000-0000-4000-8000-000000000093', 'order-admin@example.invalid');
 insert into public.admin_users(user_id) values ('00000000-0000-4000-8000-000000000093');
 insert into public.categories(id, name_ar) values ('10000000-0000-4000-8000-000000000093', 'Order tests');
@@ -62,7 +74,7 @@ begin
   denied := false;
   begin perform public.update_selection_order((o->>'id')::uuid, 1, '{"status":"packed"}'); exception when raise_exception then denied := true; end;
   if not denied then raise exception 'Stale version allowed'; end if;
-  o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"uploaded"}');
+  o := pg_temp.prime_accept((o->>'id')::uuid);
   if o->>'status' <> 'uploaded' or o->>'delivery_notes' <> 'Call before arrival' then raise exception 'Delivery upload lost details'; end if;
   if not exists(select 1 from public.list_selection_orders('', 'uploaded') r where r->>'id' = o->>'id') then raise exception 'Uploaded status filter failed'; end if;
   o := public.update_selection_order((o->>'id')::uuid, (o->>'version')::integer, '{"status":"packed"}');
@@ -94,7 +106,7 @@ set local role authenticated;
 do $$ declare o jsonb; begin
   o := public.create_selection_order('40000000-0000-4000-8000-000000000094', '[{"product_id":"20000000-0000-4000-8000-000000000093","quantity":2}]');
   o := public.update_selection_order((o->>'id')::uuid, 1, '{"status":"confirmed","phone":"07709876543","governorate":"Baghdad","area":"Mansour"}');
-  o := public.update_selection_order((o->>'id')::uuid, 2, '{"status":"uploaded"}');
+  o := pg_temp.prime_accept((o->>'id')::uuid);
   o := public.update_selection_order((o->>'id')::uuid, 3, '{"status":"packed"}');
   perform public.update_selection_order((o->>'id')::uuid, 4, '{"status":"shipped"}');
 end $$;

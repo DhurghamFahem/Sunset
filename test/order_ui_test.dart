@@ -250,15 +250,16 @@ void main() {
     expect((await app.orders.get(order.id)).items.single.code, fixture(1).code);
     expect(copied, contains('أقرب نقطة دالة: قرب جامع الرحمن'));
     expect(copied, contains('ملاحظات للمندوب: الاتصال قبل الوصول'));
-    final upload = find.widgetWithText(FilledButton, 'مرفوع للتوصيل');
-    await tester.ensureVisible(upload);
+    expect(find.widgetWithText(FilledButton, 'مرفوع للتوصيل'), findsNothing);
+    final confirmed = await app.orders.get(order.id);
+    expect(confirmed.status, OrderStatus.confirmed);
+    expect(confirmed.landmark, 'قرب جامع الرحمن');
+    expect(confirmed.deliveryNotes, 'الاتصال قبل الوصول');
+    // Simulate a server worker receipt while this screen stays open.
+    await app.orders.save(confirmed, {'status': 'uploaded'});
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.tap(upload);
-    await tester.pumpAndSettle();
-    final uploaded = await app.orders.get(order.id);
-    expect(uploaded.status, OrderStatus.uploaded);
-    expect(uploaded.landmark, 'قرب جامع الرحمن');
-    expect(uploaded.deliveryNotes, 'الاتصال قبل الوصول');
+    expect(find.text('تم التغليف'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(
