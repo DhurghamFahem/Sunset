@@ -16,7 +16,7 @@ system audit event. Tokens live only for one attempt.
 
 ## Configure and deploy
 
-1. Apply all migrations, including `202611030001_prime_uploads.sql` and `202611030002_prime_order_options.sql`.
+1. Apply all migrations, including `202611030001_prime_uploads.sql`, `202611030002_prime_order_options.sql`, and `202611040001_employee_auth_metadata.sql`.
 2. Deploy all three functions:
    ```sh
    npx supabase functions deploy save-employee
@@ -104,6 +104,19 @@ a `sending` job while its worker is active. For an exhausted `failed` job, corre
 the account/address/mapping first and then deliberately requeue it in the same way.
 
 ## Verification
+
+Employee creation requires the deployed `save-employee` function as well as the
+database migrations. Auth can attach employee app metadata after inserting the
+login. `202611040001_employee_auth_metadata.sql` provisions on metadata updates
+too, and repairs valid incomplete accounts created by the previous trigger.
+It preserves already-linked accounts and revoked employee access.
+
+For an end-to-end local creation/sign-in check, start local Supabase, run
+`npx supabase functions serve save-employee`, then run
+`node tool/employee_integration_test.cjs`. It verifies creation with and without
+Prime credentials, retry safety, employee permissions, Vault password preservation
+and recovery of incomplete accounts. Temporary test accounts are cleaned up.
+The test refuses non-local API URLs and never contacts Prime.
 
 ```sh
 node tool/prime_upload_test.cjs

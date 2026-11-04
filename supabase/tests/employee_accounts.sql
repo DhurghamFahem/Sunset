@@ -7,6 +7,27 @@ insert into auth.users(id, email, raw_app_meta_data) values
    '{"employee_profile":{"id":"30000000-0000-4000-8000-000000000112","name":"Creator two","phone":"07701234567"}}'),
   ('00000000-0000-4000-8000-000000000113', 'account-admin@example.invalid', '{}');
 insert into public.admin_users(user_id) values ('00000000-0000-4000-8000-000000000113');
+-- Auth's real Admin API can attach app metadata after the initial user INSERT.
+insert into auth.users(id,email) values
+  ('00000000-0000-4000-8000-000000000116','late-metadata@example.invalid');
+update auth.users set raw_app_meta_data =
+  '{"employee_profile":{"id":"30000000-0000-4000-8000-000000000116","name":"Late profile","phone":"07701234567"}}'
+  where id='00000000-0000-4000-8000-000000000116';
+do $$ begin
+  if not exists(select 1 from public.employees where user_id='00000000-0000-4000-8000-000000000116') or
+    not exists(select 1 from public.employee_users where user_id='00000000-0000-4000-8000-000000000116') then
+    raise exception 'Late Auth metadata failed to provision employee';
+  end if;
+end $$;
+-- Repeated metadata writes neither duplicate profiles nor restore revoked access.
+delete from public.employee_users where user_id='00000000-0000-4000-8000-000000000116';
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"test_marker":true}'
+  where id='00000000-0000-4000-8000-000000000116';
+do $$ begin
+  if exists(select 1 from public.employee_users where user_id='00000000-0000-4000-8000-000000000116') then
+    raise exception 'Metadata update restored revoked access';
+  end if;
+end $$;
 -- User-editable metadata must never grant employee access.
 insert into auth.users(id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-000000000114', 'untrusted@example.invalid',
