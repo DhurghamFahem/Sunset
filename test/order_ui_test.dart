@@ -212,11 +212,18 @@ void main() {
     Future<void> fill(String label, String text) async {
       if (label == 'المحافظة *' || label == 'المنطقة *') {
         final picker = find.widgetWithText(
-          DropdownButtonFormField<PrimeLocation>,
+          DropdownMenuFormField<PrimeLocation>,
           label,
         );
         await tester.ensureVisible(picker);
-        await tester.tap(picker);
+        await tester.tap(
+          find.descendant(of: picker, matching: find.byType(TextField)),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.descendant(of: picker, matching: find.byType(TextField)),
+          text,
+        );
         await tester.pumpAndSettle();
         await tester.tap(find.text(text).last);
         await tester.pumpAndSettle();
@@ -385,11 +392,18 @@ void main() {
       Future<void> fill(String label, String text) async {
         if (label == 'المحافظة *' || label == 'المنطقة *') {
           final picker = find.widgetWithText(
-            DropdownButtonFormField<PrimeLocation>,
+            DropdownMenuFormField<PrimeLocation>,
             label,
           );
           await tester.ensureVisible(picker);
-          await tester.tap(picker);
+          await tester.tap(
+            find.descendant(of: picker, matching: find.byType(TextField)),
+          );
+          await tester.pumpAndSettle();
+          await tester.enterText(
+            find.descendant(of: picker, matching: find.byType(TextField)),
+            text,
+          );
           await tester.pumpAndSettle();
           await tester.tap(find.text(text).last);
           await tester.pumpAndSettle();

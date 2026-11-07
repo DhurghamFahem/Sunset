@@ -81,13 +81,21 @@ void main() {
       );
       await tester.pumpAndSettle();
       Future<void> chooseState(String name) async {
-        await tester.tap(
-          find.widgetWithText(
-            DropdownButtonFormField<PrimeLocation>,
+        final input = find.descendant(
+          of: find.widgetWithText(
+            DropdownMenuFormField<PrimeLocation>,
             'المحافظة *',
           ),
+          matching: find.byType(TextField),
         );
+        await tester.tap(input);
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.enterText(input, name.substring(1));
         await tester.pump(const Duration(milliseconds: 400));
+        expect(
+          find.text(name == 'بغداد' ? 'البصرة' : 'بغداد').hitTestable(),
+          findsNothing,
+        );
         await tester.tap(find.text(name).last);
         await tester.pump(const Duration(milliseconds: 400));
       }
@@ -98,15 +106,22 @@ void main() {
       await chooseState('البصرة');
       expect(selectedState?.id, 'BSR');
       expect(selectedDistrict, isNull);
-      orders.pending['BSR']!.complete(const [PrimeLocation('25', 'العشار')]);
+      orders.pending['BSR']!.complete(const [
+        PrimeLocation('25', 'العشار'),
+        PrimeLocation('26', 'الزبير'),
+      ]);
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(
-          DropdownButtonFormField<PrimeLocation>,
+      final districtInput = find.descendant(
+        of: find.widgetWithText(
+          DropdownMenuFormField<PrimeLocation>,
           'المنطقة *',
         ),
+        matching: find.byType(TextField),
       );
+      await tester.tap(districtInput);
+      await tester.enterText(districtInput, 'عشا');
       await tester.pumpAndSettle();
+      expect(find.text('الزبير').hitTestable(), findsNothing);
       await tester.tap(find.text('العشار').last);
       await tester.pumpAndSettle();
       expect(selectedDistrict?.id, '25');

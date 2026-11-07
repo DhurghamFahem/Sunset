@@ -92,16 +92,16 @@ class _PrimeAddressFieldsState extends State<PrimeAddressFields>
 
   Future<void> loadDistricts({bool restore = false}) async {
     final selected = state;
-    if (selected == null) return;
     final ticket = ++generation;
     final previous = district;
     setState(() {
       districts = [];
       district = null;
-      loadingDistricts = true;
+      loadingDistricts = selected != null;
       error = null;
     });
     if (!restore) widget.onChanged(selected, null);
+    if (selected == null) return;
     try {
       final options = await AppScope.of(context).orders
           .primeLocations(widget.order.id, stateId: selected.id);
@@ -137,46 +137,38 @@ class _PrimeAddressFieldsState extends State<PrimeAddressFields>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<PrimeLocation>(
+        _LocationDropdown(
           key: ValueKey('prime-state-${state?.id}'),
-          initialValue: state,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'المحافظة *'),
-          items: states
-              .map(
-                (option) =>
-                    DropdownMenuItem(value: option, child: Text(option.name)),
-              )
-              .toList(),
-          onChanged: !widget.enabled || loadingStates
-              ? null
-              : (value) {
-                  setState(() => state = value);
-                  loadDistricts();
-                },
-          validator: (value) =>
-              widget.enabled && value == null ? 'اختر المحافظة من برايم' : null,
+          selection: state,
+          label: 'المحافظة *',
+          hint: 'ابحث عن المحافظة',
+          validationMessage: 'اختر المحافظة من برايم',
+          required: widget.enabled,
+          enabled: widget.enabled && !loadingStates && states.isNotEmpty,
+          options: states,
+          onSelected: (value) {
+            setState(() => state = value);
+            loadDistricts();
+          },
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<PrimeLocation>(
+        _LocationDropdown(
           key: ValueKey('prime-district-${state?.id}-${district?.id}'),
-          initialValue: district,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'المنطقة *'),
-          items: districts
-              .map(
-                (option) =>
-                    DropdownMenuItem(value: option, child: Text(option.name)),
-              )
-              .toList(),
-          onChanged: !widget.enabled || loadingDistricts || state == null
-              ? null
-              : (value) {
-                  setState(() => district = value);
-                  widget.onChanged(state, value);
-                },
-          validator: (value) =>
-              widget.enabled && value == null ? 'اختر المنطقة من برايم' : null,
+          selection: district,
+          label: 'المنطقة *',
+          hint: 'ابحث عن المنطقة',
+          validationMessage: 'اختر المنطقة من برايم',
+          required: widget.enabled,
+          enabled:
+              widget.enabled &&
+              !loadingDistricts &&
+              state != null &&
+              districts.isNotEmpty,
+          options: districts,
+          onSelected: (value) {
+            setState(() => district = value);
+            widget.onChanged(state, value);
+          },
         ),
         if (loadingStates || loadingDistricts) const LinearProgressIndicator(),
         if (error != null) ...[
@@ -204,4 +196,58 @@ class _PrimeAddressFieldsState extends State<PrimeAddressFields>
       ],
     );
   }
+}
+
+class _LocationDropdown extends StatefulWidget {
+  const _LocationDropdown({
+    super.key,
+    required this.selection,
+    required this.options,
+    required this.label,
+    required this.hint,
+    required this.validationMessage,
+    required this.required,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final PrimeLocation? selection;
+  final List<PrimeLocation> options;
+  final String label, hint, validationMessage;
+  final bool required, enabled;
+  final ValueChanged<PrimeLocation?> onSelected;
+
+  @override
+  State<_LocationDropdown> createState() => _LocationDropdownState();
+}
+
+class _LocationDropdownState extends State<_LocationDropdown> {
+  late final controller = TextEditingController(text: widget.selection?.name);
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DropdownMenuFormField<PrimeLocation>(
+    controller: controller,
+    initialSelection: widget.selection,
+    expandedInsets: EdgeInsets.zero,
+    menuHeight: 280,
+    enableFilter: true,
+    requestFocusOnTap: true,
+    label: Text(widget.label),
+    hintText: widget.hint,
+    enabled: widget.enabled,
+    dropdownMenuEntries: widget.options
+        .map((option) => DropdownMenuEntry(value: option, label: option.name))
+        .toList(),
+    onSelected: widget.onSelected,
+    validator: (value) =>
+        widget.required && (value == null || controller.text != value.name)
+        ? widget.validationMessage
+        : null,
+  );
 }
