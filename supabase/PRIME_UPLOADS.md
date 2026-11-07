@@ -1,7 +1,9 @@
 # Prime background uploads
 
-Orders enter the durable queue when they become **confirmed**. Pending selections
-do not contain a deliverable address yet. Each order has one job; refreshing the
+Orders enter the durable queue when they become **confirmed**. Saving a completed
+manual order automatically confirms it once pricing, phone, address and Prime
+state/district IDs are present. Incomplete manual drafts and customer selections
+remain pending until completed or explicitly confirmed. Each order has one job; refreshing the
 browser or retrying confirmation cannot enqueue another shipment. The worker runs
 on the server, independently of Flutter. Existing confirmed orders are not
 backfilled automatically.
@@ -16,7 +18,7 @@ system audit event. Tokens live only for one attempt.
 
 ## Configure and deploy
 
-1. Apply all migrations, including `202611030001_prime_uploads.sql`, `202611030002_prime_order_options.sql`, and `202611040001_employee_auth_metadata.sql`.
+1. Apply all migrations, including `202611030001_prime_uploads.sql`, `202611030002_prime_order_options.sql`, `202611040001_employee_auth_metadata.sql`, and `202611040002_manual_order_upload_on_save.sql`.
 2. Deploy all three functions:
    ```sh
    npx supabase functions deploy save-employee

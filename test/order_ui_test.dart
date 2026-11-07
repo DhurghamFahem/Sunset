@@ -248,7 +248,7 @@ void main() {
       tester.widget<DropdownButtonFormField<OrderSource>>(source).initialValue,
       OrderSource.instagram,
     );
-    final confirm = find.text('تأكيد الطلب ونسخ الرسالة');
+    final confirm = find.text('حفظ وتأكيد الطلب للرفع إلى برايم');
     await tester.scrollUntilVisible(
       confirm,
       250,

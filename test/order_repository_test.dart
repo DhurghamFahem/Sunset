@@ -21,6 +21,30 @@ void main() {
     'area': 'المنصور',
     'status': 'confirmed',
   };
+  test('saving a completed manual order confirms it; incomplete drafts stay pending', () async {
+    var manual = await repo.createManual(newOrderToken(), {'1': 1});
+    manual = await repo.save(manual, {'customer_name': 'Draft'});
+    expect(manual.status, OrderStatus.pending);
+    manual = await repo.save(manual, {
+      ...details,
+      'status': 'pending',
+      'prime_state_id': 'BGD',
+      'prime_district_id': 17,
+    });
+    expect(manual.status, OrderStatus.confirmed);
+    final savedAgain = await repo.save(manual, {
+      'delivery_notes': 'Call first',
+    });
+    expect(savedAgain.status, OrderStatus.confirmed);
+    var customer = await repo.create(newOrderToken(), {'1': 1});
+    customer = await repo.save(customer, {
+      ...details,
+      'status': 'pending',
+      'prime_state_id': 'BGD',
+      'prime_district_id': 17,
+    });
+    expect(customer.status, OrderStatus.pending);
+  });
   test(
     'staff can add, remove and replace tattoos in every pre-shipping status',
     () async {

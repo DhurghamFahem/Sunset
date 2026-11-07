@@ -118,4 +118,16 @@ begin
   perform public.update_selection_order(oid,2,'{"status":"cancelled"}');
   if public.claim_prime_upload() is not null then raise exception 'Cancelled job claimed'; end if;
 end $$;
+do $$ declare o jsonb; oid uuid; begin
+  o := public.create_manual_order('40000000-0000-4000-8000-000000000125',
+    '[{"product_id":"20000000-0000-4000-8000-000000000121","quantity":1}]');
+  oid := (o->>'id')::uuid;
+  o := public.update_selection_order(oid,1,'{"status":"pending","customer_name":"Draft"}');
+  if o->>'status' <> 'pending' then raise exception 'Incomplete manual draft confirmed'; end if;
+  o := public.update_selection_order(oid,2,'{"status":"pending","phone":"07701234567","governorate":"بغداد","area":"المنصور","prime_state_id":"BGD","prime_district_id":17}');
+  if o->>'status' <> 'confirmed' then raise exception 'Completed manual save not confirmed'; end if;
+  if not exists(select 1 from private.prime_upload_jobs where order_id=oid and state='queued') then raise exception 'Manual save not queued'; end if;
+  perform public.update_selection_order(oid,3,'{"delivery_notes":"Call first"}');
+  if (select count(*) from private.prime_upload_jobs where order_id=oid) <> 1 then raise exception 'Manual save duplicate queue'; end if;
+end $$;
 rollback;

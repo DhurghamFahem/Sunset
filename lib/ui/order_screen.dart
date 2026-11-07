@@ -596,7 +596,12 @@ class _OrderScreenState extends State<OrderScreen> {
                 if (staff && order.status.editable)
                   OutlinedButton(
                     onPressed: busy ? null : () => save(order.status),
-                    child: const Text('حفظ التعديلات'),
+                    child: Text(
+                      order.status == OrderStatus.pending &&
+                              order.createdBy != null
+                          ? 'حفظ وتأكيد الطلب للرفع إلى برايم'
+                          : 'حفظ التعديلات',
+                    ),
                   ),
                 ...order.status.next
                     .where((s) => s != OrderStatus.uploaded)

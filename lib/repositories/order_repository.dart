@@ -394,7 +394,7 @@ class MemoryOrderRepository implements OrderRepository {
         ((changes.containsKey('governorate') &&
                 changes['governorate'] != old.governorate) ||
             (changes.containsKey('area') && changes['area'] != old.area));
-    final next = TattooOrder.fromJson({
+    var next = TattooOrder.fromJson({
       ...old.toJson(),
       ...changes,
       if (addressReset) ...{'prime_state_id': null, 'prime_district_id': null},
@@ -489,6 +489,18 @@ class MemoryOrderRepository implements OrderRepository {
       throw const OrderException(
         'المبلغ النهائي يجب ألا يتجاوز المجموع بعد خصم القطع',
       );
+    }
+    if (!customer &&
+        old.createdBy != null &&
+        old.status == OrderStatus.pending &&
+        next.status == OrderStatus.pending &&
+        next.priced &&
+        validatePhone(next.phone) == null &&
+        next.governorate.trim().isNotEmpty &&
+        next.area.trim().isNotEmpty &&
+        next.primeStateId != null &&
+        next.primeDistrictId != null) {
+      next = TattooOrder.fromJson({...next.toJson(), 'status': 'confirmed'});
     }
     if (![OrderStatus.pending, OrderStatus.cancelled].contains(next.status) &&
         (validatePhone(next.phone) != null ||
