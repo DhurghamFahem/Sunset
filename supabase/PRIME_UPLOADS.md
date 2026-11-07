@@ -18,7 +18,7 @@ system audit event. Tokens live only for one attempt.
 
 ## Configure and deploy
 
-1. Apply all migrations, including `202611030001_prime_uploads.sql`, `202611030002_prime_order_options.sql`, `202611040001_employee_auth_metadata.sql`, and `202611040002_manual_order_upload_on_save.sql`.
+1. Apply all migrations, including `202611070001_main_prime_account.sql` for main-account settings and credential routing.
 2. Deploy all three functions:
    ```sh
    npx supabase functions deploy save-employee
@@ -37,10 +37,19 @@ system audit event. Tokens live only for one attempt.
    it; changing the username requires a new password. Clearing the username
    disconnects the Prime account.
 
-The order creator's employee account is used. For a customer-created order, the
-employee who confirms it is used. An administrator without a linked employee
-account has no implicit Prime identity: confirm through a configured employee
-account. Missing credentials consume retries and leave the order confirmed.
+7. For the main administrator (`getoge@gmail.com`), open **Delivery settings →
+   Main account Prime credentials** and save the Prime username/password. The
+   user must already exist in Auth and in `admin_users`. Only administrators can
+   read or change these settings. Passwords stay in Vault; an empty password
+   preserves the saved one, and clearing the username removes the credentials.
+
+Orders created by `getoge@gmail.com` use the main account for both address lookups
+and uploads, even when an employee later edits or confirms them. Employee-created
+orders keep their creator's Prime account. For a customer-created order, the
+employee who confirms it is used. Other administrators without a linked employee
+account have no implicit Prime identity. Missing credentials consume retries and
+leave the order confirmed; main-account orders never fall back to an employee's
+credentials.
 
 ## Address, shop and product mapping
 
@@ -100,7 +109,8 @@ from private.prime_upload_jobs j join public.orders o on o.id = j.order_id
 order by j.created_at desc;
 ```
 
-For a reviewed job, search Prime using the full order UUID in the address. If a
+For a reviewed job, match Prime's order code, recipient phone, address and amount
+against the local order (short order codes can be reused). If a
 shipment exists, acknowledge its verified case number through
 `finish_prime_upload(order_id, claim_token, 'success', case_number)` as a database
 administrator. If Prime confirms that no shipment exists, set the job to `queued`
@@ -132,7 +142,8 @@ flutter test test/prime_address_fields_test.dart test/employee_account_test.dart
 flutter analyze
 ```
 
-Run `supabase/tests/prime_uploads.sql` on a migrated test database. Fixtures roll
+Run `supabase/tests/prime_uploads.sql` and `supabase/tests/main_prime_account.sql`
+on a migrated test database. Fixtures roll
 back. It checks Vault permissions, account preservation, enqueueing, claim fencing,
 five-attempt exhaustion/backoff, cancellation, crash recovery, successful status
 updates and audit idempotence. `orders.sql` and `edit_order_tattoos.sql` use mock

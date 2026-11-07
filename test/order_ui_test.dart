@@ -381,6 +381,74 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
   }
+  testWidgets('main Prime settings validate, save and preserve credentials', (
+    tester,
+  ) async {
+    final app = await services();
+    addTearDown(app.selection.dispose);
+    Future<void> open() async {
+      await tester.pumpWidget(
+        wrap(app, const Scaffold(body: OrderManagement(section: 'settings'))),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await open();
+    final username = find.widgetWithText(
+      TextFormField,
+      'اسم المستخدم في برايم',
+    );
+    final password = find.widgetWithText(TextFormField, 'كلمة مرور برايم');
+    final save = find.widgetWithText(FilledButton, 'حفظ حساب برايم');
+    Future<void> fill(Finder field, String text) async {
+      await tester.ensureVisible(field);
+      await tester.enterText(field, text);
+    }
+
+    Future<void> submit() async {
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    await fill(username, 'main-prime');
+    await submit();
+    expect(find.text('أدخل كلمة مرور برايم'), findsOneWidget);
+    expect((await app.orders.mainPrimeAccount()).configured, isFalse);
+    await fill(password, 'main-secret');
+    expect(
+      tester
+          .widget<TextField>(
+            find.descendant(of: password, matching: find.byType(TextField)),
+          )
+          .obscureText,
+      isTrue,
+    );
+    await submit();
+    expect((await app.orders.mainPrimeAccount()).username, 'main-prime');
+    expect((await app.orders.mainPrimeAccount()).configured, isTrue);
+    expect(tester.widget<TextFormField>(password).controller!.text, isEmpty);
+    await submit();
+    expect((await app.orders.mainPrimeAccount()).configured, isTrue);
+    await tester.pumpWidget(const SizedBox());
+    await open();
+    expect(
+      tester.widget<TextFormField>(username).controller!.text,
+      'main-prime',
+    );
+    expect(tester.widget<TextFormField>(password).controller!.text, isEmpty);
+    await fill(username, 'renamed-prime');
+    await submit();
+    expect(find.text('أدخل كلمة مرور برايم'), findsOneWidget);
+    expect((await app.orders.mainPrimeAccount()).username, 'main-prime');
+    await fill(username, '');
+    await submit();
+    expect((await app.orders.mainPrimeAccount()).configured, isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'admin can change quantities and combine discounts before confirming',
     (tester) async {

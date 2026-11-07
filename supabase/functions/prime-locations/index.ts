@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       p_order_id: orderId, p_user_id: session.user.id,
     });
     if (error) return reply(503, { error: "تعذر تحميل حساب برايم" });
-    if (!account?.username || !account?.password) return reply(409, { error: "أضف حساب برايم للموظف المسؤول عن الطلب أولاً" });
+    if (!account?.username || !account?.password) return reply(409, { error: "أضف حساب برايم لمنشئ الطلب أولاً: الحساب الرئيسي من إعدادات التوصيل، أو الموظف من إعدادات الموظفين" });
     const prime = new PrimeClient();
     const token = await prime.login(account.username, account.password);
     return reply(200, { locations: await prime.locations(token, stateId) });

@@ -10,6 +10,7 @@ import '../../repositories/order_repository.dart';
 import '../order_screen.dart';
 import '../widgets/common.dart';
 import 'manual_order_screen.dart';
+import 'main_prime_settings.dart';
 
 class OrderManagement extends StatefulWidget {
   const OrderManagement({super.key, required this.section});
@@ -295,6 +296,8 @@ class _OrderManagementState extends State<OrderManagement> {
                 onPressed: busy ? null : saveDelivery,
                 child: const Text('حفظ كلفة التوصيل'),
               ),
+              const SizedBox(height: 32),
+              const MainPrimeSettings(),
             ],
           ],
         ),

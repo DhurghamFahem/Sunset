@@ -47,12 +47,35 @@ abstract class OrderRepository {
   });
   Future<int> deliveryCost();
   Future<void> setDeliveryCost(int cost);
+  Future<MainPrimeAccount> mainPrimeAccount();
+  Future<void> saveMainPrimeAccount(String username, {String? password});
   Future<List<Json>> performance();
 }
 
 class SupabaseOrderRepository implements OrderRepository {
   SupabaseOrderRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<MainPrimeAccount> mainPrimeAccount() async =>
+      MainPrimeAccount.fromJson(
+        Map<String, dynamic>.from(await client.rpc('get_main_prime_account')),
+      );
+
+  @override
+  Future<void> saveMainPrimeAccount(String username, {String? password}) async {
+    try {
+      await client.rpc(
+        'save_main_prime_account',
+        params: {'p_username': username.trim(), 'p_password': password},
+      );
+    } on PostgrestException catch (e) {
+      if (e.message.startsWith('ORDER:')) {
+        throw OrderException(e.message.substring(6));
+      }
+      rethrow;
+    }
+  }
+
   @override
   Future<List<PrimeLocation>> primeLocations(
     String orderId, {
@@ -209,6 +232,39 @@ class MemoryOrderRepository implements OrderRepository {
   MemoryOrderRepository(this.catalog, {this.demoAdmin});
   final TestAdminService? demoAdmin;
   final CatalogRepository catalog;
+  MainPrimeAccount _mainPrimeAccount = const MainPrimeAccount();
+
+  Future<void> _requirePrimeAdmin() async {
+    if (demoAdmin != null && !await demoAdmin!.isAdmin()) {
+      throw const OrderException('متاح للإدارة فقط');
+    }
+  }
+
+  @override
+  Future<MainPrimeAccount> mainPrimeAccount() async {
+    await _requirePrimeAdmin();
+    return _mainPrimeAccount;
+  }
+
+  @override
+  Future<void> saveMainPrimeAccount(String username, {String? password}) async {
+    await _requirePrimeAdmin();
+    final login = username.trim();
+    if (login.length > 254 ||
+        (password != null && (password.isEmpty || password.length > 256)) ||
+        (login.isEmpty && password != null) ||
+        (login.isNotEmpty &&
+            password == null &&
+            (!_mainPrimeAccount.configured ||
+                login != _mainPrimeAccount.username))) {
+      throw const OrderException('راجع اسم المستخدم وكلمة مرور برايم');
+    }
+    _mainPrimeAccount = MainPrimeAccount(
+      username: login,
+      configured: login.isNotEmpty,
+    );
+  }
+
   @override
   Future<List<PrimeLocation>> primeLocations(
     String orderId, {

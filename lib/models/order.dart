@@ -38,6 +38,17 @@ enum OrderSource {
   final String label;
 }
 
+class MainPrimeAccount {
+  const MainPrimeAccount({this.username = '', this.configured = false});
+  final String username;
+  final bool configured;
+
+  factory MainPrimeAccount.fromJson(Json json) => MainPrimeAccount(
+    username: json['username'] as String? ?? '',
+    configured: json['configured'] == true,
+  );
+}
+
 class Employee {
   const Employee({
     required this.id,
