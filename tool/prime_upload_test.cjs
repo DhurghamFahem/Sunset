@@ -46,12 +46,23 @@ async function runApi() {
     'check-shipment-cost-within-range', 'calculate-shipment-charges', 'create-new-case']);
   const create = requests.at(-1).body, charge = requests.at(-2).body;
   assert.equal(create.receiverName, 'AB12');
-  assert(create.locationDetails.includes(order.id));
+  assert.equal(create.locationDetails, 'landmark');
   assert.equal(create.receiptAmtIqd, '17000'); assert.equal(create.receiptAmtUsd, '0');
+  assert.equal(create.undeclaredShipmentValue, '12000');
   assert.equal(create.rmk, 'Call first'); assert.equal(create.productsList.length, 1);
   assert.equal(create.productsList[0].qty, 3); assert.equal(create.productsList[0].itemSellPrice, '4000');
   assert.equal(typeof create.heightCm, 'number'); assert.equal(typeof charge.heightCm, 'string');
   assert(!('productsList' in charge)); assert.equal(create.district, '17'); assert.equal(create.senderId, 7);
+  for (const landmark of ['', '   ', null, undefined, '  Near the mosque  ']) {
+    reset();
+    const api = new PrimeClient(transport);
+    const shipment = await api.prepare({...order, landmark, prime_state_id: 'BGD',
+      prime_district_id: 17, area: 'old district'}, 'token');
+    await api.upload(shipment, 'token');
+    assert.equal(requests.at(-1).body.locationDetails,
+      landmark?.trim() || 'المنصور');
+    assert.equal(requests.at(-1).body.rmk, 'Call first');
+  }
   reset(); overrides['logistics/check-shipment-cost-within-range'] = () => Response.json({}, {status: 422});
   await assert.rejects(runApi, e => e.outcome === 'retry'); assert(!requests.some(r => r.path.endsWith('create-new-case')));
   reset(); overrides['merchant/list-of-shops'] = () => Response.json([{id: 7}, {id: 8}]);
@@ -68,9 +79,17 @@ async function runApi() {
     governorate: 'old label', area: 'old district'}, 'token');
   assert.equal(paid.receiptAmtIqd, '0'); assert.equal(paid.productsList[0].itemSellPrice, '4000');
   assert(requests.filter(r => r.path.startsWith('logistics/')).every(r => r.body.receiptAmtIqd === '0'));
+  await paidApi.upload(paid, 'token');
+  assert.equal(requests.at(-1).body.undeclaredShipmentValue, '12000');
+  assert.equal(requests.at(-1).body.receiptAmtIqd, '0');
   reset();
   const normal = await new PrimeClient(transport).prepare({...order, final_total: null}, 'token');
   assert.equal(normal.receiptAmtIqd, '19000');
+  assert.equal(normal.undeclaredShipmentValue, '14000');
+  reset();
+  const rounded = await new PrimeClient(transport).prepare({...order, final_total: 17001}, 'token');
+  assert.equal(rounded.undeclaredShipmentValue, '12001');
+  assert.equal(rounded.productsList[0].itemSellPrice, '4000');
   reset();
   assert.deepEqual(JSON.parse(JSON.stringify(await paidApi.locations('token'))), [{id: 'BGD', name: 'بغداد'}]);
   assert.deepEqual(JSON.parse(JSON.stringify(await paidApi.locations('token', 'BGD'))), [{id: '17', name: 'المنصور'}]);

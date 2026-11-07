@@ -124,9 +124,10 @@ export class PrimeClient {
     if (!recipient || !order.phone) throw new PrimeFailure('mapping_required', 'retry');
     return {
       ...common, ...dimensions, productsList, receiptAmtUsd: '0',
+      // Merchant-only value stays intact even when the customer has prepaid.
+      undeclaredShipmentValue: String(goodsTotal),
       receiverName: recipient, receiverHp1: order.phone,
-      // Full UUID supports reconciliation; short order codes are reused.
-      locationDetails: `${order.code} [${order.id}] - ${order.governorate} - ${order.area}${order.landmark ? ` - ${order.landmark}` : ''}`,
+      locationDetails: String(order.landmark ?? '').trim() || String(district.districtName ?? order.area).trim(),
       rmk: String(order.delivery_notes ?? ''),
     };
   }

@@ -57,12 +57,16 @@ account. Missing credentials consume retries and leave the order confirmed.
 - Dimensions come from that Prime product. Missing dimensions or empty lists stop
   the attempt. Quantities are aggregated; parcel dimensions use Pigeon's
   volume-based calculation.
-- The customer name sent to Prime is exactly the order code. The short order
-  code and full UUID remain in the address for tracing; delivery notes are kept.
+- The customer name sent to Prime is exactly the order code. `locationDetails`
+  contains the nearest point (trimmed), or the selected Prime district name when
+  the nearest point is blank. Delivery notes are sent separately in `rmk`.
 - The original merchandise price excludes delivery. Order total includes delivery
   and honors saved discounts. Prime's per-item selling price is the merchandise
   portion (total minus delivery, floored at zero), divided by quantity and rounded
   to whole dinars as required by the existing Prime contract.
+- The create-order body also sends `undeclaredShipmentValue` as the exact
+  merchandise portion before per-item rounding, encoded as a string like the
+  other monetary fields. This merchant-only amount is preserved for paid orders.
 - **Paid** means goods AND delivery have already been paid. `is_paid` is saved on
   the order; Prime receives `receiptAmtIqd: "0"` for paid orders and the total
   including delivery for unpaid orders. The merchandise value and local total
