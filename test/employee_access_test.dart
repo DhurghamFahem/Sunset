@@ -13,6 +13,7 @@ import 'package:sunset/services/test_admin_service.dart';
 import 'package:sunset/state/selection_store.dart';
 import 'package:sunset/ui/admin/admin_screen.dart';
 import 'package:sunset/ui/admin/order_management.dart';
+import 'package:sunset/ui/admin/preparation_screen.dart';
 import 'package:sunset/ui/customer/catalog_screen.dart';
 
 class EmployeeSession extends TestAdminService {
@@ -53,7 +54,7 @@ void main() {
     )..addFont(rootBundle.load('assets/fonts/ElMessiri-700.ttf'))).load();
   });
   testWidgets(
-    'employee sees only orders and customer images, including deep links',
+    'employee sees orders, preparation and customer images, including deep links',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final catalog = TrackedCatalog();
@@ -90,12 +91,17 @@ void main() {
           'orders',
           reason: path,
         );
-        expect(find.byType(ChoiceChip), findsNWidgets(2), reason: path);
+        expect(find.byType(ChoiceChip), findsNWidgets(3), reason: path);
         expect(find.widgetWithText(ChoiceChip, 'الطلبات'), findsOneWidget);
         expect(find.widgetWithText(ChoiceChip, 'صور للزبون'), findsOneWidget);
+        expect(find.widgetWithText(ChoiceChip, 'التجهيز'), findsOneWidget);
         expect(find.text('مساحة التصاميم'), findsNothing);
         expect(catalog.privateReads, 0, reason: path);
       }
+      router.go('/admin/preparation');
+      await tester.pumpAndSettle();
+      expect(find.byType(PreparationScreen), findsOneWidget);
+      expect(catalog.privateReads, 0);
       await tester.tap(find.widgetWithText(ChoiceChip, 'صور للزبون'));
       await tester.pumpAndSettle();
       expect(

@@ -26,6 +26,7 @@ abstract class OrderRepository {
     OrderSource source,
   );
   Future<TattooOrder> get(String id, {String? token});
+  Future<TattooOrder> getByPrimeCaseId(String caseId);
   Future<TattooOrder> save(TattooOrder order, Json changes, {String? token});
   Future<TattooOrder> requestPrimeUpload(TattooOrder order);
   Future<List<TattooOrder>> list({
@@ -56,6 +57,9 @@ abstract class OrderRepository {
 class SupabaseOrderRepository implements OrderRepository {
   SupabaseOrderRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<TattooOrder> getByPrimeCaseId(String caseId) =>
+      _rpc('get_order_by_prime_case_id', {'p_case_id': caseId.trim()});
   @override
   Future<TattooOrder> requestPrimeUpload(TattooOrder order) => _rpc(
     'request_prime_upload',
@@ -238,6 +242,23 @@ class MemoryOrderRepository implements OrderRepository {
   MemoryOrderRepository(this.catalog, {this.demoAdmin});
   final TestAdminService? demoAdmin;
   final CatalogRepository catalog;
+  @override
+  Future<TattooOrder> getByPrimeCaseId(String caseId) async {
+    if (demoAdmin != null && !demoAdmin!.signedIn) {
+      throw const OrderException('متاح لموظفي الطلبات فقط');
+    }
+    final value = caseId.trim();
+    if (value.isEmpty) throw const OrderException('أدخل رقم حالة برايم');
+    final matches = _orders.values.where((o) => o.primeCaseId == value);
+    if (matches.isEmpty) {
+      throw const OrderException('لا يوجد طلب بهذا الرقم في برايم');
+    }
+    if (matches.length > 1) {
+      throw const OrderException('رقم برايم مرتبط بأكثر من طلب. راجع الإدارة');
+    }
+    return matches.single;
+  }
+
   @override
   Future<TattooOrder> requestPrimeUpload(TattooOrder order) async {
     if (demoAdmin != null && !demoAdmin!.signedIn) {

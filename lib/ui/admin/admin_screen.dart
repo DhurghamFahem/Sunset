@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import 'catalog_editor.dart';
 import 'order_management.dart';
+import 'preparation_screen.dart';
 import '../offers_screen.dart';
 import '../customer/catalog_screen.dart';
 
@@ -32,7 +33,7 @@ class _AdminScreenState extends State<AdminScreen> {
   int authGeneration = 0;
   String get section =>
       access == StaffAccess.employee &&
-          !['orders', 'images'].contains(widget.section)
+          !['orders', 'preparation', 'images'].contains(widget.section)
       ? 'orders'
       : widget.section;
   bool initialized = false,
@@ -327,13 +328,18 @@ class _AdminScreenState extends State<AdminScreen> {
                         'offers': 'العروض',
                         'categories': 'التصنيفات',
                         'orders': 'الطلبات',
+                        'preparation': 'التجهيز',
                         'images': 'صور للزبون',
                         'team': 'الموظفون',
                         'settings': 'التوصيل',
                       }.entries.where(
                         (entry) =>
                             access == StaffAccess.administrator ||
-                            ['orders', 'images'].contains(entry.key),
+                            [
+                              'orders',
+                              'preparation',
+                              'images',
+                            ].contains(entry.key),
                       ))
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -351,6 +357,8 @@ class _AdminScreenState extends State<AdminScreen> {
             const Expanded(child: OffersScreen(admin: true))
           else if (section == 'images')
             const Expanded(child: CatalogScreen(forCustomer: true))
+          else if (section == 'preparation')
+            const Expanded(child: PreparationScreen())
           else if (!['products', 'categories'].contains(section))
             Expanded(
               child: OrderManagement(key: ValueKey(section), section: section),

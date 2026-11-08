@@ -456,7 +456,7 @@ class _EmployeeEditorState extends State<EmployeeEditor> {
             const Text('يُختار أول متجر وأول منتج من برايم تلقائياً.'),
             const Padding(
               padding: EdgeInsets.only(top: 12),
-              child: Text('صلاحيات الموظف: الطلبات وصور الزبون فقط.'),
+              child: Text('صلاحيات الموظف: الطلبات والتجهيز وصور الزبون فقط.'),
             ),
             if (error != null) Text(error!),
           ],
