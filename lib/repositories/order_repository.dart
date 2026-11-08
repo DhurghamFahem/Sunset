@@ -27,6 +27,7 @@ abstract class OrderRepository {
   );
   Future<TattooOrder> get(String id, {String? token});
   Future<TattooOrder> save(TattooOrder order, Json changes, {String? token});
+  Future<TattooOrder> requestPrimeUpload(TattooOrder order);
   Future<List<TattooOrder>> list({
     String search = '',
     OrderStatus? status,
@@ -55,6 +56,11 @@ abstract class OrderRepository {
 class SupabaseOrderRepository implements OrderRepository {
   SupabaseOrderRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<TattooOrder> requestPrimeUpload(TattooOrder order) => _rpc(
+    'request_prime_upload',
+    {'p_id': order.id, 'p_version': order.version},
+  );
   @override
   Future<MainPrimeAccount> mainPrimeAccount() async =>
       MainPrimeAccount.fromJson(
@@ -232,6 +238,27 @@ class MemoryOrderRepository implements OrderRepository {
   MemoryOrderRepository(this.catalog, {this.demoAdmin});
   final TestAdminService? demoAdmin;
   final CatalogRepository catalog;
+  @override
+  Future<TattooOrder> requestPrimeUpload(TattooOrder order) async {
+    if (demoAdmin != null && !demoAdmin!.signedIn) {
+      throw const OrderException('متاح لموظفي الطلبات فقط');
+    }
+    final saved = await get(order.id);
+    if (saved.primeCaseId?.isNotEmpty == true) return saved;
+    if (saved.status != OrderStatus.confirmed ||
+        saved.version != order.version) {
+      throw const OrderException(
+        'حدّث الطلب وتأكد أنه مؤكد قبل رفعه إلى برايم',
+      );
+    }
+    return _orders[order.id] = TattooOrder.fromJson({
+      ...saved.toJson(),
+      'status': 'uploaded',
+      'prime_case_id': 'demo-${order.id}',
+      'version': saved.version + 1,
+    });
+  }
+
   MainPrimeAccount _mainPrimeAccount = const MainPrimeAccount();
 
   Future<void> _requirePrimeAdmin() async {

@@ -128,6 +128,7 @@ class TattooOrder {
     this.isPaid = false,
     this.primeStateId,
     this.primeDistrictId,
+    this.primeCaseId,
     this.phone = '',
     this.governorate = '',
     this.area = '',
@@ -151,6 +152,7 @@ class TattooOrder {
   final bool isPaid;
   final String? primeStateId;
   final int? primeDistrictId;
+  final String? primeCaseId;
   final String? employeeId, createdBy;
   final String createdByName;
   bool get priced =>
@@ -196,6 +198,7 @@ class TattooOrder {
     isPaid: j['is_paid'] ?? false,
     primeStateId: j['prime_state_id'],
     primeDistrictId: j['prime_district_id'],
+    primeCaseId: j['prime_case_id'],
     phone: j['phone'] ?? '',
     governorate: j['governorate'] ?? '',
     area: j['area'] ?? '',
@@ -220,6 +223,7 @@ class TattooOrder {
     'is_paid': isPaid,
     'prime_state_id': primeStateId,
     'prime_district_id': primeDistrictId,
+    'prime_case_id': primeCaseId,
     'phone': phone,
     'governorate': governorate,
     'area': area,

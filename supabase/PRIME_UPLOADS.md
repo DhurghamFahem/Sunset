@@ -8,6 +8,14 @@ browser or retrying confirmation cannot enqueue another shipment. The worker run
 on the server, independently of Flutter. Existing confirmed orders are not
 backfilled automatically.
 
+Staff see **Upload to Prime** on confirmed orders without `prime_case_id`. The
+button validates and saves current edits, then requests the existing background
+worker to upload the saved order on its next scheduled run. It can create a
+missing job or retry an explicitly failed job. Repeated requests share one job;
+active uploads and uncertain results cannot be restarted by this button. Apply
+`202611070003_request_prime_upload.sql` to enable this action. The button hides
+when the order refresh receives its Prime ID or its status changes.
+
 The wire format is ported from the local Pigeon project's
 `lib/features/delivery/integration/prime_carrier.dart` and
 `test/prime_upload_test.dart`. It logs in with `Login`, `Password` and
@@ -15,6 +23,10 @@ The wire format is ported from the local Pigeon project's
 calculates charges, and posts to `logistics/create-new-case`. Only a positive case
 number advances the order to **uploaded**, increments its version and writes a
 system audit event. Tokens live only for one attempt.
+The successful response ID is stored on the order as `prime_case_id` and in the
+upload job as `remote_id`, in the same transaction as the status change. The
+order API and Flutter model include this field. Migration
+`202611070002_order_prime_case_id.sql` backfills it for previous successful uploads.
 
 ## Configure and deploy
 

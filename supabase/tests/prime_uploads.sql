@@ -65,6 +65,12 @@ begin
   if not public.mark_prime_sending(oid,claim) then raise exception 'Send not marked'; end if;
   if not public.finish_prime_upload(oid,claim,'success','987654') then raise exception 'Finish failed'; end if;
   if not public.finish_prime_upload(oid,claim,'success','987654') then raise exception 'Acknowledgement retry failed'; end if;
+  if (select prime_case_id from public.orders where id=oid) is distinct from '987654' then
+    raise exception 'Prime response ID not stored on order'; end if;
+  if public.get_selection_order(oid)->>'prime_case_id' is distinct from '987654' then
+    raise exception 'Order API missing Prime response ID'; end if;
+  if public.finish_prime_upload(oid,claim,'success','999999') then
+    raise exception 'Different response ID replaced successful upload'; end if;
   select version into v from public.orders where orders.id=oid and status='uploaded';
   if v is distinct from 4 then raise exception 'Wrong status/version'; end if;
   begin perform public.update_selection_order(oid,4,'{"is_paid":false}');
@@ -82,6 +88,8 @@ begin
     j := public.claim_prime_upload(); claim := (j->>'claim_token')::uuid;
     if (j->>'attempt')::integer <> attempt then raise exception 'Wrong attempts'; end if;
     perform public.finish_prime_upload(oid,claim,'retry',null,'login_failed');
+    if (select prime_case_id from public.orders where id=oid) is not null then
+      raise exception 'Failed upload recorded a Prime response ID'; end if;
     if (select status from public.orders where orders.id=oid) <> 'confirmed' then raise exception 'Failed order advanced'; end if;
     if (select version from public.orders where orders.id=oid) <> 2 then raise exception 'Failure modified order'; end if;
     if attempt < 5 then
@@ -130,4 +138,66 @@ do $$ declare o jsonb; oid uuid; begin
   perform public.update_selection_order(oid,3,'{"delivery_notes":"Call first"}');
   if (select count(*) from private.prime_upload_jobs where order_id=oid) <> 1 then raise exception 'Manual save duplicate queue'; end if;
 end $$;
+-- Manual upload requests use the same durable job and cannot duplicate sends.
+update private.prime_upload_jobs set next_attempt_at = now() + interval '1 day',
+  lease_until = now() + interval '1 day';
+do $$
+declare o jsonb; oid uuid; result jsonb; blocked text;
+begin
+  o := public.create_manual_order(gen_random_uuid(),
+    '[{"product_id":"20000000-0000-4000-8000-000000000121","quantity":1}]');
+  oid := (o->>'id')::uuid;
+  begin perform public.request_prime_upload(oid,1);
+    raise check_violation using message='Pending upload requested'; exception when raise_exception then null; end;
+  o := public.update_selection_order(oid,1,
+    '{"status":"confirmed","phone":"07701234567","governorate":"بغداد","area":"المنصور"}');
+  -- An older confirmed order may not have any job yet.
+  delete from private.prime_upload_jobs where order_id = oid;
+  result := public.request_prime_upload(oid,2);
+  if result ? 'access_token' or result ? 'password' or result->>'status' <> 'confirmed' then
+    raise exception 'Unsafe upload request result'; end if;
+  perform public.request_prime_upload(oid,2);
+  if (select count(*) from private.prime_upload_jobs where order_id = oid) <> 1 then
+    raise exception 'Repeated upload request duplicated job'; end if;
+  if (select employee_id from private.prime_upload_jobs where order_id = oid) is distinct from
+    '30000000-0000-4000-8000-000000000121'::uuid then raise exception 'Uploader changed'; end if;
+  begin perform public.request_prime_upload(oid,1);
+    raise check_violation using message='Stale request accepted'; exception when raise_exception then null; end;
+  update private.prime_upload_jobs set state = 'failed', attempts = 5, last_error = 'login_failed'
+    where order_id = oid;
+  perform public.request_prime_upload(oid,2);
+  if not exists(select 1 from private.prime_upload_jobs where order_id = oid and state = 'queued'
+    and attempts = 0 and next_attempt_at <= now() and last_error is null) then
+    raise exception 'Failed job not requeued'; end if;
+  foreach blocked in array array['working','sending','review','succeeded'] loop
+    update private.prime_upload_jobs set state = blocked, lease_until = now() + interval '1 minute'
+      where order_id = oid;
+    begin perform public.request_prime_upload(oid,2);
+      raise check_violation using message='Unsafe upload restarted'; exception when raise_exception then null; end;
+  end loop;
+  update private.prime_upload_jobs set state = 'working', lease_until = now() - interval '1 minute'
+    where order_id = oid;
+  perform public.request_prime_upload(oid,2);
+  if (select state from private.prime_upload_jobs where order_id = oid) <> 'queued' then
+    raise exception 'Expired pre-send job not recovered'; end if;
+  -- Completed orders simply return their existing ID, without another job.
+  update private.prime_upload_jobs set state = 'succeeded', remote_id = '987659' where order_id = oid;
+  update public.orders set status = 'uploaded', prime_case_id = '987659' where id = oid;
+  result := public.request_prime_upload(oid,2);
+  if result->>'prime_case_id' is distinct from '987659' or
+    (select state from private.prime_upload_jobs where order_id = oid) <> 'succeeded' then
+    raise exception 'Successful upload restarted'; end if;
+end $$;
+set local role anon;
+do $$ begin
+  begin perform public.request_prime_upload(gen_random_uuid(),1); raise exception 'Anonymous upload permitted';
+  exception when insufficient_privilege then null; end;
+end $$;
+set local role authenticated;
+set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000199';
+do $$ begin
+  begin perform public.request_prime_upload(gen_random_uuid(),1); raise exception 'Customer upload permitted';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
 rollback;

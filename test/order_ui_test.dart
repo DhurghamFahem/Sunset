@@ -44,13 +44,18 @@ void main() {
       null,
     ),
   );
-  Future<AppServices> services({bool loseManualResponse = false}) async {
+  Future<AppServices> services({
+    bool loseManualResponse = false,
+    OrderRepository? repository,
+  }) async {
     SharedPreferences.setMockInitialValues({});
     final catalog = MemoryCatalog(products: [fixture(1), fixture(2)]);
     final analytics = NoopAnalytics();
     return AppServices(
       catalog: catalog,
-      orders: loseManualResponse ? LostManualResponseRepository(catalog) : null,
+      orders:
+          repository ??
+          (loseManualResponse ? LostManualResponseRepository(catalog) : null),
       analytics: analytics,
       selection: SelectionStore(
         await SharedPreferences.getInstance(),
@@ -381,6 +386,109 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
   }
+  testWidgets(
+    'confirmed orders can request Prime upload and refresh the returned ID',
+    (tester) async {
+      final repo = QueuedPrimeOrders(MemoryCatalog(products: [fixture(1)]));
+      final app = await services(repository: repo);
+      addTearDown(app.selection.dispose);
+      var order = await repo.create(newOrderToken(), {'1': 1});
+      order = await repo.save(order, {
+        'status': 'confirmed',
+        'phone': '07701234567',
+        'governorate': 'بغداد',
+        'area': 'المنصور',
+        'prime_state_id': 'BGD',
+        'prime_district_id': 17,
+      });
+      await tester.pumpWidget(wrap(app, OrderScreen(order: order)));
+      await tester.pumpAndSettle();
+      final button = find.text('رفع الطلب إلى برايم');
+      final notes = find.widgetWithText(
+        TextFormField,
+        'ملاحظات للمندوب (اختياري)',
+      );
+      await tester.scrollUntilVisible(
+        notes,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(notes, 'Saved before upload');
+      await tester.scrollUntilVisible(
+        button,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(button, findsOneWidget);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(repo.requests, 1);
+      expect((await repo.get(order.id)).deliveryNotes, 'Saved before upload');
+      expect(button, findsOneWidget);
+      // A returned ID and status must refresh without discarding subsequent edits.
+      await tester.scrollUntilVisible(
+        notes,
+        -300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(notes, 'Unsaved next edit');
+      repo.completed = true;
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextFormField>(notes).controller!.text,
+        'Unsaved next edit',
+      );
+      await tester.scrollUntilVisible(
+        find.text('تم التغليف'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(button, findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'Prime upload button is hidden for customers, pending orders and existing IDs',
+    (tester) async {
+      final app = await services();
+      addTearDown(app.selection.dispose);
+      final token = newOrderToken();
+      final pending = await app.orders.create(token, {'1': 1});
+      final confirmed = await app.orders.save(pending, {
+        'status': 'confirmed',
+        'phone': '07701234567',
+        'governorate': 'بغداد',
+        'area': 'المنصور',
+        'prime_state_id': 'BGD',
+        'prime_district_id': 17,
+      });
+      for (final screen in [
+        OrderScreen(order: pending),
+        OrderScreen(order: confirmed, token: token),
+        OrderScreen(
+          order: TattooOrder.fromJson({
+            ...confirmed.toJson(),
+            'prime_case_id': '987654',
+          }),
+        ),
+      ]) {
+        await tester.pumpWidget(wrap(app, screen));
+        await tester.pumpAndSettle();
+        await tester.drag(
+          find.byType(Scrollable).first,
+          const Offset(0, -6000),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('رفع الطلب إلى برايم'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      }
+    },
+  );
   testWidgets('main Prime settings validate, save and preserve credentials', (
     tester,
   ) async {
@@ -529,5 +637,29 @@ class LostManualResponseRepository extends MemoryOrderRepository {
       throw StateError('Response lost after commit');
     }
     return order;
+  }
+}
+
+class QueuedPrimeOrders extends MemoryOrderRepository {
+  QueuedPrimeOrders(super.catalog);
+  int requests = 0;
+  bool completed = false;
+  @override
+  Future<TattooOrder> requestPrimeUpload(TattooOrder order) async {
+    requests++;
+    return order;
+  }
+
+  @override
+  Future<TattooOrder> get(String id, {String? token}) async {
+    final order = await super.get(id, token: token);
+    return completed
+        ? TattooOrder.fromJson({
+            ...order.toJson(),
+            'status': 'uploaded',
+            'prime_case_id': '987654',
+            'version': order.version + 1,
+          })
+        : order;
   }
 }

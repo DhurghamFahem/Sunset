@@ -78,14 +78,16 @@ class _OrderScreenState extends State<OrderScreen> {
       final refreshed = await AppScope.of(context).orders
           .get(order.id, token: widget.token);
       if (!mounted || busy || order.version != version) return;
-      // Only adopt a status-only change; preserve unsaved edits and optimistic
+      // Only adopt status/upload metadata changes; preserve unsaved edits and optimistic
       // locking when another employee changed the order's content.
       String content(TattooOrder value) => jsonEncode(
         value.toJson()
           ..remove('status')
+          ..remove('prime_case_id')
           ..remove('version'),
       );
-      if (refreshed.status != order.status &&
+      if ((refreshed.status != order.status ||
+              refreshed.primeCaseId != order.primeCaseId) &&
           content(refreshed) == content(order)) {
         setState(() => order = refreshed);
       }
@@ -197,14 +199,14 @@ class _OrderScreenState extends State<OrderScreen> {
     }
   }
 
-  Future<void> save(OrderStatus target) async {
-    if (busy) return;
+  Future<bool> save(OrderStatus target, {bool showSuccess = true}) async {
+    if (busy) return false;
     if (target != OrderStatus.cancelled && items.isEmpty) {
       setState(() => error = 'أضف وشماً واحداً على الأقل للطلب');
-      return;
+      return false;
     }
     if (target != OrderStatus.cancelled && !form.currentState!.validate()) {
-      return;
+      return false;
     }
     if (target == OrderStatus.cancelled &&
         !await confirm(
@@ -212,9 +214,9 @@ class _OrderScreenState extends State<OrderScreen> {
           'إلغاء الطلب ${order.code}؟',
           'سيتم إغلاق هذا الطلب.',
         )) {
-      return;
+      return false;
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() {
       busy = true;
       error = null;
@@ -250,7 +252,7 @@ class _OrderScreenState extends State<OrderScreen> {
       final previous = order.status;
       final saved = await AppScope.of(context).orders
           .save(order, changes, token: widget.token);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         order = saved;
         isPaid = saved.isPaid;
@@ -276,15 +278,54 @@ class _OrderScreenState extends State<OrderScreen> {
       if (previous == OrderStatus.pending &&
           saved.status == OrderStatus.confirmed) {
         await copyMessage();
-      } else if (mounted) {
+      } else if (mounted && showSuccess) {
         showNotice(context, 'تم حفظ الطلب');
       }
+      return true;
     } catch (e) {
       if (mounted) {
         setState(
           () => error = e is OrderException
               ? e.message
               : 'تعذر حفظ الطلب. حاول مرة ثانية.',
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> uploadToPrime() async {
+    if (busy ||
+        order.status != OrderStatus.confirmed ||
+        order.primeCaseId?.isNotEmpty == true) {
+      return;
+    }
+    // Save and validate the visible edits before requesting the upload.
+    if (!await save(OrderStatus.confirmed, showSuccess: false) || !mounted) {
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final saved = await AppScope.of(context).orders.requestPrimeUpload(order);
+      if (!mounted) return;
+      setState(() => order = saved);
+      showNotice(
+        context,
+        saved.primeCaseId?.isNotEmpty == true
+            ? 'تم رفع الطلب إلى برايم'
+            : 'تم طلب الرفع إلى برايم. ستتحدث الحالة تلقائياً بعد نجاح الرفع.',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => error = e is OrderException
+              ? e.message
+              : 'تعذر طلب الرفع إلى برايم. حاول مرة ثانية.',
         );
       }
     } finally {
@@ -592,6 +633,14 @@ class _OrderScreenState extends State<OrderScreen> {
                     child: Text(
                       'يُرفع الطلب إلى برايم في الخلفية. يبقى مؤكداً إذا تعذر الرفع.',
                     ),
+                  ),
+                if (staff &&
+                    order.status == OrderStatus.confirmed &&
+                    (order.primeCaseId?.isEmpty ?? true))
+                  FilledButton.icon(
+                    onPressed: busy ? null : uploadToPrime,
+                    icon: const Icon(Icons.cloud_upload_outlined),
+                    label: const Text('رفع الطلب إلى برايم'),
                   ),
                 if (staff && order.status.editable)
                   OutlinedButton(
