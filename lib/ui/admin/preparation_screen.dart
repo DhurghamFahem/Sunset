@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -273,6 +274,20 @@ class _PrimeQrScannerState extends State<PrimeQrScanner> {
   bool detected = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      // mobile_scanner 7.5's auto/native and WASM readers call video.play()
+      // without playsinline/muted. Safari can leave that startup pending,
+      // so Flutter never gets a camera preview. ZXing JS sets those attributes
+      // before attaching the stream and starting inline playback.
+      MobileScannerPlatform.instance.setWebBarcodeReader(
+        WebBarcodeReader.zxingJs,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('مسح رمز برايم')),
     body: Column(
@@ -283,6 +298,16 @@ class _PrimeQrScannerState extends State<PrimeQrScanner> {
         ),
         Expanded(
           child: MobileScanner(
+            placeholderBuilder: (_) => const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('جاري تشغيل الكاميرا…'),
+                ],
+              ),
+            ),
             onDetect: (capture) {
               if (detected || !mounted) return;
               final values = capture.barcodes
